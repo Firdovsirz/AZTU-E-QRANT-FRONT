@@ -117,7 +117,6 @@ export default function UserDetails() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
     
-        // List of required fields
         const requiredFields: (keyof UserDetailsFormData)[] = [
             "name", "surname", "father_name", "fin_kod", "personal_id_number", "sex", "born_place",
             "living_location", "citizenship", "work_place", "department", "duty", "main_education",
@@ -126,13 +125,11 @@ export default function UserDetails() {
             "personal_email", "work_email"
         ];
     
-        // Find which fields are empty
         const emptyFields = requiredFields.filter(field => {
             const value = formData[field];
             return !value || value.toString().trim() === "";
         });
     
-        // If any required field is empty or image is missing, show detailed warning
         if (emptyFields.length > 0 || !image) {
             const formattedFieldNames = emptyFields
                 .map(field => `• ${field.replace(/_/g, " ")}`)

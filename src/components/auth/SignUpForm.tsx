@@ -39,6 +39,8 @@ export default function SignUpForm() {
         password,
         role,
       });
+      console.log(response);
+      
 
       Swal.fire("Uğurla qeydiyyatdan keçdiniz!", "", "success").then(() => {
         navigate("/signin");

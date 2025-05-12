@@ -22,6 +22,7 @@ import { ScrollToTop } from "./components/common/ScrollToTop";
 import Home from "./pages/Dashboard/Home";
 import UserDetailsPage from "./pages/UserDetails/UserDetailsPage";
 import { jwtDecode } from "jwt-decode";
+import ProjectDetailsPage from "./pages/ProjectDetailsPage/ProjectDetailsPage";
 
 const isProfileCompleted = (): boolean => {
   const token = localStorage.getItem("token");
@@ -42,7 +43,6 @@ export default function App() {
       <Router>
         <ScrollToTop />
         <Routes>
-          {/* Dashboard Layout, redirect to /user-details if profile not completed */}
           <Route
             element={
               isProfileCompleted() ? <AppLayout /> : <Navigate to="/user-details" replace />
@@ -62,6 +62,7 @@ export default function App() {
             <Route path="/videos" element={<Videos />} />
             <Route path="/line-chart" element={<LineChart />} />
             <Route path="/bar-chart" element={<BarChart />} />
+            <Route path="/project-details" element={<ProjectDetailsPage />} />
           </Route>
 
           {/* User Details Page - always accessible */}
