@@ -1,9 +1,9 @@
 import { useState } from "react";
 
-interface CountryCode {
-  code: string;
-  label: string;
-}
+// interface CountryCode {
+//   code: string;
+//   label: string;
+// }
 
 interface PhoneInputProps {
   placeholder?: string;
@@ -14,7 +14,7 @@ interface PhoneInputProps {
 const PhoneInput: React.FC<PhoneInputProps> = ({
   placeholder = "+1 (555) 000-0000",
   onChange,
-  selectPosition = "start", // Default position is 'start'
+  // selectPosition = "start", // Default position is 'start'
 }) => {
   const [phoneNumber, setPhoneNumber] = useState<string>("+994");
 

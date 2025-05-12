@@ -182,10 +182,19 @@ export default function UserDetails() {
         }
     };
 
+    const handleToggle = () => {
+        console.log("clicked");
+    }
+
+    // const handleClick = () => {
+    //     console.log("clicked");
+        
+    // }
+
 
     return (
         <>
-            <Header />
+            <Header onToggle={handleToggle} />
             <div className="w-[100%] flex flex-col justify-center items-center p-[50px]">
                 <h1 className="text-[20px] text-center text-gray-400 dark:text-white/60 mb-10 mt-10">
                     Digər səhifələrə giriş icazəsi üçün bütün məlumatları doldurun və təsdiq edin!

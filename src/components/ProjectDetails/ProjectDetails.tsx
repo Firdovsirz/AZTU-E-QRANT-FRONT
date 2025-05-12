@@ -4,6 +4,8 @@ import TextArea from '../form/input/TextArea';
 
 export default function ProjectDetails() {
     const [message, setMessage] = useState("");
+    console.log(message);
+    
     return (
         <div>
             <div>
