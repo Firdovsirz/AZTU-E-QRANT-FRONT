@@ -33,7 +33,7 @@ const navItems: NavItem[] = [
   {
     icon: <UserCircleIcon />,
     name: "Lahiyələr",
-    path: "/lahiyələr",
+    path: "/projects",
   },
   {
     icon: <UserCircleIcon />,

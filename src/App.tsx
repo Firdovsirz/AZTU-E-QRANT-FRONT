@@ -25,6 +25,7 @@ import UserTypeChoicePage from "./pages/AuthPages/UserTypeChoicePage";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import ProjectDetailsPage from "./pages/ProjectDetailsPage/ProjectDetailsPage";
 import AcademicTypeChoicePage from "./pages/AuthPages/AcademicTypeChoicePage";
+import ProjectTablePage from "./pages/ProjectTable/ProjectTablePage";
 
 export default function App() {
   return (
@@ -61,6 +62,7 @@ function AppWithRouter() {
           <Route path="/bar-chart" element={<BarChart />} />
           <Route path="/project-details" element={<ProjectDetailsPage />} />
           <Route path="/user-details" element={<UserDetailsPage />} />
+          <Route path="/projects" element={<ProjectTablePage />} />
         </Route>
 
         {/* <Route path="/signin-type" element={
