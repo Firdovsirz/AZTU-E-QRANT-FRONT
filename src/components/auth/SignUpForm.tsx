@@ -7,6 +7,8 @@ import Input from "../form/input/InputField";
 import apiClient from "../../util/apiClient";
 import { useNavigate } from "react-router-dom";
 import { EyeCloseIcon, EyeIcon } from "../../icons";
+import { useSelector } from "react-redux";
+import { RootState } from "../../redux/store";
 
 export default function SignUpForm() {
   const [showPassword, setShowPassword] = useState(false);
@@ -25,30 +27,42 @@ export default function SignUpForm() {
     setRole(value);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const userType = useSelector((state: RootState) => state.auth.userType);
+const academicType = useSelector((state: RootState) => state.auth.academicType);
 
-    if (password !== confirmPassword) {
-      Swal.fire("Xəta", "Şifrələr uyğun deyil!", "error");
-      return;
-    }
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
 
-    try {
-      const response = await apiClient.post("/auth/signup", {
-        fin_kod: finKod,
-        password,
-        role,
-      });
-      console.log(response);
-      
+  if (password !== confirmPassword) {
+    Swal.fire("Xəta", "Şifrələr uyğun deyil!", "error");
+    return;
+  }
+   console.log("Sending data:", {
+    fin_kod: finKod,
+    password,
+    user_type: userType,
+    academic_type: academicType,
+    project_role: role,
+  });
 
-      Swal.fire("Uğurla qeydiyyatdan keçdiniz!", "", "success").then(() => {
-        navigate("/signin");
-      });
-    } catch (error: any) {
-      Swal.fire("Xəta", error.response?.data?.message || "Server xətası", "error");
-    }
-  };
+  try {
+    const response = await apiClient.post("/auth/signup", {
+      fin_kod: finKod,
+      password,
+      user_type: userType,
+      academic_type: academicType,
+      project_role: Number(role),
+    });
+
+    console.log(response);
+
+    Swal.fire("Uğurla qeydiyyatdan keçdiniz!", "", "success").then(() => {
+      navigate("/signin");
+    });
+  } catch (error: any) {
+    Swal.fire("Xəta", error.response?.data?.message || "Server xətası", "error");
+  }
+};
 
   return (
     <div className="flex flex-col flex-1 w-full overflow-y-auto lg:w-1/2 no-scrollbar">
