@@ -2,7 +2,6 @@ import Swal from "sweetalert2";
 import { useState } from "react";
 import Label from "../form/Label";
 import Select from "../form/Select";
-import Header from "../header/Header";
 import Button from "../ui/button/Button";
 import { useNavigate } from "react-router";
 import Input from "../form/input/InputField";
@@ -182,19 +181,8 @@ export default function UserDetails() {
         }
     };
 
-    const handleToggle = () => {
-        console.log("clicked");
-    }
-
-    // const handleClick = () => {
-    //     console.log("clicked");
-        
-    // }
-
-
     return (
         <>
-            <Header onToggle={handleToggle} />
             <div className="w-[100%] flex flex-col justify-center items-center p-[50px]">
                 <h1 className="text-[20px] text-center text-gray-400 dark:text-white/60 mb-10 mt-10">
                     Digər səhifələrə giriş icazəsi üçün bütün məlumatları doldurun və təsdiq edin!

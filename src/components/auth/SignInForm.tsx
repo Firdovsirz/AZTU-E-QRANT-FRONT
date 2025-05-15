@@ -7,59 +7,62 @@ import Button from "../ui/button/Button";
 import apiClient from "../../util/apiClient";
 import Swal from "sweetalert2";
 import { useDispatch, useSelector } from "react-redux";
-import { loginSuccess, clearLoginSteps, setAcademicType } from "../../redux/slices/authSlice";
+import { loginSuccess, clearLoginSteps, setAcademicType, setFinKod } from "../../redux/slices/authSlice";
 import { RootState } from "../../redux/store";
 import ArrowBackIosIcon from '@mui/icons-material/ArrowBackIos';
 
 export default function SignInForm() {
-  const [finKod, setFinKod] = useState("");
+  const [finKod, setFinKodInterally] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  console.log(finKod);
+  
 
   const { userType, academicType } = useSelector((state: RootState) => state.auth);
 
   const handleSubmit = async (e: any) => {
-    e.preventDefault();
+  e.preventDefault();
 
-    console.log(userType, academicType, finKod, password);
-    
-    if (userType === null || academicType === null || finKod.length === 0 || password.length === 0) {
-      return Swal.fire("Xəta", "Bütün məlumatları doldurun", "error");
-    }
-    console.log(
-      userType,
-      academicType, 
-      finKod,
-      password
-    );
-    
-    try {
-      const response = await apiClient.post(
-        "/auth/signin",
-        {
-          user_type: userType,
-          academic_type: academicType,
-          fin_kod: finKod,
-          password,
-        },
-        {
-          withCredentials: true,
-        }
-      );
+  console.log(userType, academicType, finKod, password);
 
-      if (response.status === 200) {
-        const { token, data } = response.data;
-        console.log(data);
-        dispatch(loginSuccess({ token }));
-        dispatch(clearLoginSteps());
-        navigate("/");
+  if (
+    userType === null ||
+    academicType === null ||
+    finKod.length === 0 ||
+    password.length === 0
+  ) {
+    return Swal.fire("Xəta", "Bütün məlumatları doldurun", "error");
+  }
+
+  try {
+    const response = await apiClient.post(
+      "/auth/signin",
+      {
+        user_type: userType,
+        academic_type: academicType,
+        fin_kod: finKod,
+        password,
+      },
+      {
+        withCredentials: true,
       }
-    } catch (error) {
-      Swal.fire("Xəta baş verdi", "Fin kod və ya şifrə yanlışdır", "error");
+    );
+
+    if (response.status === 200) {
+      const { token, data } = response.data;
+      console.log(data);
+      // ✅ Save finKod to Redux
+      dispatch(setFinKod(finKod));
+      dispatch(loginSuccess({ token }));
+      dispatch(clearLoginSteps());
+      navigate("/");
     }
-  };
+  } catch (error) {
+    Swal.fire("Xəta baş verdi", "Fin kod və ya şifrə yanlışdır", "error");
+  }
+};
 
   return (
     <div className="flex flex-col flex-1">
@@ -76,7 +79,7 @@ export default function SignInForm() {
               <Input
                 value={finKod}
                 placeholder="Fin Kod"
-                onChange={(e) => setFinKod(e.target.value)} />
+                onChange={(e) => setFinKodInterally(e.target.value)} />
               {/* If editable is required, you can update it from another step */}
             </div>
             <div>

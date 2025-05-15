@@ -1,6 +1,14 @@
-import { createSlice } from "@reduxjs/toolkit";
+import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
-const initialState = {
+interface AuthState {
+  userType: string | null;
+  academicType: string | null;
+  fin_kod: string | null;
+  token: string | null;
+  isAuthenticated: boolean;
+}
+
+const initialState: AuthState = {
   userType: null,
   academicType: null,
   fin_kod: null,
@@ -9,19 +17,19 @@ const initialState = {
 };
 
 const authSlice = createSlice({
-  name: "auth",
+  name: 'auth',
   initialState,
   reducers: {
-    setUserType: (state, action) => {
+    setUserType: (state, action: PayloadAction<string | null>) => {
       state.userType = action.payload;
     },
-    setAcademicType: (state, action) => {
+    setAcademicType: (state, action: PayloadAction<string | null>) => {
       state.academicType = action.payload;
     },
-    setFinKod: (state, action) => {
+    setFinKod: (state, action: PayloadAction<string>) => {
       state.fin_kod = action.payload;
     },
-    loginSuccess: (state, action) => {
+    loginSuccess: (state, action: PayloadAction<{ token: string }>) => {
       state.token = action.payload.token;
       state.isAuthenticated = true;
     },
@@ -29,18 +37,9 @@ const authSlice = createSlice({
     clearLoginSteps: (state) => {
       state.userType = null;
       state.academicType = null;
-      state.fin_kod = null;
     },
   },
 });
 
-export const {
-  setUserType,
-  setAcademicType,
-  setFinKod,
-  loginSuccess,
-  logout,
-  clearLoginSteps,
-} = authSlice.actions;
-
+export const { setUserType, setAcademicType, setFinKod, loginSuccess, clearLoginSteps } = authSlice.actions;
 export default authSlice.reducer;

@@ -14,13 +14,13 @@ export default function SignInAcademicRoleChoice() {
                 </div>
                 <h1 className="text-center mb-[20px] text-gray-700 dark:text-gray-400">Akademik Rol</h1>
                 <div className="flex flex-col justify-center">
-                    <Button className="mb-[40px]" onClick={() => { dispatch(setAcademicType(0)) }}>
+                    <Button className="mb-[40px]" onClick={() => { dispatch(setAcademicType("0")) }}>
                         Müəllim
                     </Button>
-                    <Button className="mb-[40px]" onClick={() => { dispatch(setAcademicType(1)) }}>
+                    <Button className="mb-[40px]" onClick={() => { dispatch(setAcademicType("1")) }}>
                         Doktorant
                     </Button>
-                    <Button className="mb-[40px]" onClick={() => { dispatch(setAcademicType(2)) }}>
+                    <Button className="mb-[40px]" onClick={() => { dispatch(setAcademicType("2")) }}>
                         Magistr
                     </Button>
                 </div>
