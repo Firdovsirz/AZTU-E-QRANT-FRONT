@@ -1,15 +1,15 @@
+import Swal from "sweetalert2";
 import { useState } from "react";
-import { Link, useNavigate } from "react-router";
-import { EyeCloseIcon, EyeIcon } from "../../icons";
 import Label from "../form/Label";
-import Input from "../form/input/InputField";
 import Button from "../ui/button/Button";
 import apiClient from "../../util/apiClient";
-import Swal from "sweetalert2";
-import { useDispatch, useSelector } from "react-redux";
-import { loginSuccess, clearLoginSteps, setAcademicType, setFinKod } from "../../redux/slices/authSlice";
+import Input from "../form/input/InputField";
 import { RootState } from "../../redux/store";
+import { Link, useNavigate } from "react-router";
+import { EyeCloseIcon, EyeIcon } from "../../icons";
+import { useDispatch, useSelector } from "react-redux";
 import ArrowBackIosIcon from '@mui/icons-material/ArrowBackIos';
+import { loginSuccess, setAcademicType, setFinKod } from "../../redux/slices/authSlice";
 
 export default function SignInForm() {
   const [finKod, setFinKodInterally] = useState("");
@@ -18,51 +18,55 @@ export default function SignInForm() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   console.log(finKod);
-  
+
 
   const { userType, academicType } = useSelector((state: RootState) => state.auth);
 
   const handleSubmit = async (e: any) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  console.log(userType, academicType, finKod, password);
+    console.log(userType, academicType, finKod, password);
 
-  if (
-    userType === null ||
-    academicType === null ||
-    finKod.length === 0 ||
-    password.length === 0
-  ) {
-    return Swal.fire("Xəta", "Bütün məlumatları doldurun", "error");
-  }
-
-  try {
-    const response = await apiClient.post(
-      "/auth/signin",
-      {
-        user_type: userType,
-        academic_type: academicType,
-        fin_kod: finKod,
-        password,
-      },
-      {
-        withCredentials: true,
-      }
-    );
-
-    if (response.status === 200) {
-      const { token, data } = response.data;
-      console.log(data);
-      // ✅ Save finKod to Redux
-      dispatch(setFinKod(finKod));
-      dispatch(loginSuccess({ token }));
-      dispatch(clearLoginSteps());
-      navigate("/");
+    if (
+      userType === null ||
+      academicType === null ||
+      finKod.length === 0 ||
+      password.length === 0
+    ) {
+      return Swal.fire("Xəta", "Bütün məlumatları doldurun", "error");
     }
-  } catch (error) {
-    Swal.fire("Xəta baş verdi", "Fin kod və ya şifrə yanlışdır", "error");
-  }
-};
+
+    try {
+      const response = await apiClient.post(
+        "/auth/signin",
+        {
+          user_type: userType,
+          academic_type: academicType,
+          fin_kod: finKod,
+          password,
+        },
+        {
+          withCredentials: true,
+        }
+      );
+
+      if (response.status === 200) {
+        const authData = response.data.data.auth;
+        const projectCode = response.data.data.project_code;
+        const profileCompleted = response.data.data.profile_completed;
+        const token = response.data.token;
+        const projectRole = response.data.data.auth.project_role;
+        console.log("project role", projectRole);
+
+        dispatch(setFinKod(finKod));
+        dispatch(loginSuccess({ token, user: authData, projectCode, profileCompleted }));
+        {projectRole === 0 ? navigate("/project-offer") : navigate("/")}
+        // navigate("/");
+      }
+    } catch (error) {
+      Swal.fire("Xəta baş verdi", "Fin kod və ya şifrə yanlışdır", "error");
+    }
+  };
 
   return (
     <div className="flex flex-col flex-1">

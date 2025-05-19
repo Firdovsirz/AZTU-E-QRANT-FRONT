@@ -25,6 +25,7 @@ export default function ProjectDetails() {
     const [projectScientificIdea, setProjectScientificIdea] = useState("");
     const [projectCode, setProjectCode] = useState("");
     const fin_kod = useSelector((state: RootState) => state.auth.fin_kod);
+    const projectRole = useSelector((state: RootState) =>  state.auth.projectRole);
 
 
     useEffect(() => {
@@ -238,11 +239,13 @@ export default function ProjectDetails() {
                     rows={6}
                 />
             </div>
-            <div className='mt-[20px] flex justify-end items-end'>
+            {projectRole === 0 ? (
+                <div className='mt-[20px] flex justify-end items-end'>
                 <Button onClick={handleApprove}>
                     Təsdiq et
                 </Button>
             </div>
+            ) : null}
         </div>
     )
 }

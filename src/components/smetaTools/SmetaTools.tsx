@@ -3,35 +3,41 @@ import {
     TableHeader,
     TableBody,
     TableRow,
-    TableCell, TableFooter
+    TableCell,
+    TableFooter
 } from "../ui/table";
-import Input from "../form/input/InputField";
-import DoneIcon from '@mui/icons-material/Done';
 import Swal from 'sweetalert2';
+import { useSelector } from "react-redux";
+import { useLocation } from "react-router";
 import { useState, useEffect } from "react";
+import Input from "../form/input/InputField";
 import apiClient from "../../util/apiClient";
+import { RootState } from "../../redux/store";
+import DoneIcon from '@mui/icons-material/Done';
+import DeleteIcon from '@mui/icons-material/Delete';
+
 export interface SubjectOfPurchase {
-  id: number;
-  project_code: number;
-  equipment_name: string;
-  unit_of_measure: string;
-  price: number;
-  quantity: number;
-  total_amount: number;
+    id: number;
+    project_code: number;
+    equipment_name: string;
+    unit_of_measure: string;
+    price: number;
+    quantity: number;
+    total_amount: number;
 }
 
 export interface SubjectApiResponse {
-  data: SubjectOfPurchase[];
+    data: SubjectOfPurchase[];
 }
 
-export default function SmetaTools() {
-    const projectCode = 58744983;
+export default function SmetaTools({ projectCode }: { projectCode: Number | null }) {
 
     const [equipmentName, setEquipmentName] = useState("");
     const [unit, setUnit] = useState("");
     const [price, setPrice] = useState("");
     const [quantity, setQuantity] = useState("");
     const [subjects, setSubjects] = useState<SubjectOfPurchase[]>([]);
+    const projectRole = useSelector((state: RootState) => state.auth.projectRole);
 
     useEffect(() => {
         const fetchSubjects = async () => {
@@ -74,6 +80,40 @@ export default function SmetaTools() {
             });
         }
     };
+
+    const handleDeleteSubject = async (id: number) => {
+        try {
+            await apiClient.delete(`/api/delete/smeta/subject/${id}`);
+            await Swal.fire({
+                icon: 'success',
+                title: 'Silindi!',
+                text: 'Məlumat uğurla silindi',
+                confirmButtonText: 'OK',
+            });
+            // window.location.reload();
+
+            setSubjects(subjects.filter(subject => subject.id !== id));
+        } catch (error) {
+            console.error("Error deleting subject:", error);
+            await Swal.fire({
+                icon: 'error',
+                title: 'Xəta!',
+                text: 'Məlumatı silmək mümkün olmadı',
+                confirmButtonText: 'Bağla',
+            });
+        }
+    };
+
+    const location = useLocation();
+
+    const [viewOnly, setViewOnly] = useState<boolean>(false);
+
+    useEffect(() => {
+        if (location.pathname.startsWith("/project-view/")) {
+            setViewOnly(true);
+        }
+    }, [location.pathname])
+    console.log(location.pathname);
 
     return (
         <>
@@ -129,29 +169,42 @@ export default function SmetaTools() {
                                     <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">{subject.price}</TableCell>
                                     <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">{subject.quantity}</TableCell>
                                     <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">{subject.total_amount}</TableCell>
-                                    <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">-</TableCell>
+                                    <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                                        <p className="bg-green-200 dark:bg-green-600 text-green-900 dark:text-green-100 px-2 py-1 rounded-[20px] inline-block">
+                                            Təsdiq olunub
+                                        </p>
+                                    </TableCell>
+                                    {projectRole === 0 && !viewOnly ? (
+                                        <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                                            <div className="bg-red-500 rounded-[10px] inline-flex items-center justify-center p-1 cursor-pointer w-[35px] h-[35px]">
+                                                <DeleteIcon className="text-white cursor-pointer" onClick={() => handleDeleteSubject(subject.id)} />
+                                            </div>
+                                        </TableCell>
+                                    ) : null}
                                 </TableRow>
                             ))}
-                            <TableRow>
-                                <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                                    <Input placeholder="Avadanlıq" value={equipmentName} onChange={(e) => setEquipmentName(e.target.value)} />
-                                </TableCell>
-                                <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                                    <Input placeholder="Ölçü vahidi" value={unit} onChange={(e) => setUnit(e.target.value)} />
-                                </TableCell>
-                                <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                                    <Input placeholder="Qiymət" value={price} onChange={(e) => setPrice(e.target.value)} />
-                                </TableCell>
-                                <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                                    <Input placeholder="Miqdar" value={quantity} onChange={(e) => setQuantity(e.target.value)} />
-                                </TableCell>
-                                <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">-</TableCell>
-                                <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                                    <div className="bg-green-500 rounded-[10px] inline-flex items-center justify-center p-1 cursor-pointer w-[35px] h-[35px]">
-                                        <DoneIcon className="text-white cursor-pointer" onClick={handleSaveSubject} />
-                                    </div>
-                                </TableCell>
-                            </TableRow>
+                            {projectRole === 0 && !viewOnly ? (
+                                <TableRow>
+                                    <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                                        <Input placeholder="Avadanlıq" value={equipmentName} onChange={(e) => setEquipmentName(e.target.value)} />
+                                    </TableCell>
+                                    <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                                        <Input placeholder="Ölçü vahidi" value={unit} onChange={(e) => setUnit(e.target.value)} />
+                                    </TableCell>
+                                    <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                                        <Input placeholder="Qiymət" value={price} onChange={(e) => setPrice(e.target.value)} />
+                                    </TableCell>
+                                    <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                                        <Input placeholder="Miqdar" value={quantity} onChange={(e) => setQuantity(e.target.value)} />
+                                    </TableCell>
+                                    <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">-</TableCell>
+                                    <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                                        <div className="bg-green-500 rounded-[10px] inline-flex items-center justify-center p-1 cursor-pointer w-[35px] h-[35px]">
+                                            <DoneIcon className="text-white cursor-pointer" onClick={handleSaveSubject} />
+                                        </div>
+                                    </TableCell>
+                                </TableRow>
+                            ) : null}
                         </TableBody>
                         <TableFooter className="border-t border-gray-700 divide-y divide-gray-100 dark:divide-white/[0.05]">
                             <TableRow>

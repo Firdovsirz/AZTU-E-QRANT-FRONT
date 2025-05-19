@@ -10,6 +10,8 @@ import {
   UserCircleIcon,
 } from "../icons";
 import { useSidebar } from "../context/SidebarContext";
+import { useSelector } from "react-redux";
+import { RootState } from "../redux/store";
 
 type NavItem = {
   name: string;
@@ -24,7 +26,6 @@ const navItems: NavItem[] = [
     name: "Əsas",
     path: "/",
   },
-
   {
     icon: <UserCircleIcon />,
     name: "Elanlar",
@@ -38,22 +39,9 @@ const navItems: NavItem[] = [
   {
     icon: <UserCircleIcon />,
     name: "Şəxsi məlumatlar",
-    path: "/user-details",
+    path: "/user-details/:fin_kod",
   },
-  {
-    icon: <UserCircleIcon />,
-    name: "Lahiyə Detalları",
-    subItems: [
-      { name: "Layihənin təklifi", path: "/project-offer", pro: false },
-      { name: "Layihə icraçıları", path: "/collaborators", pro: false },
-      { name: "Layihə smetası", path: "/main-smeta", pro: false },
-      { name: "Layihə rəhbərinin və icraçıların xidmət haqqı smetası", path: "/project-smeta-salary", pro: false },
-      { name: "Avadanlıq, cihaz, qurğu və mal-materialların satınalınması smetası", path: "/project-smeta-tools", pro: false },
-      { name: "İşlərin və xidmətlərin satınalınması smetası", path: "/project-smeta-services", pro: false },
-      { name: "Layihə üzrə icarə xərclər smetası", path: "/project-smeta-expences", pro: false },
-      { name: "Digər birbaşa xərclər smetası", path: "/project-smeta-other-expences", pro: false },
-    ],
-  }
+  // projectCode dependent items will be added inside component
 ];
 
 const othersItems: NavItem[] = [
@@ -88,12 +76,62 @@ const othersItems: NavItem[] = [
 ];
 
 const AppSidebar: React.FC = () => {
+  const projectRole = useSelector((state: RootState) => state.auth.projectRole);
+
+  const navItemsWithProject = [
+    ...navItems,
+    ...(projectRole === 0
+      ? [
+        {
+          icon: <UserCircleIcon />,
+          name: "Lahiyə Detalları",
+          subItems: [
+            { name: "Layihənin təklifi", path: "/project-offer", pro: false },
+            { name: "Layihə icraçıları", path: "/collaborators", pro: false },
+          ],
+        },
+        {
+          icon: <UserCircleIcon />,
+          name: "Lahiyə Smetası",
+          subItems: [
+            { name: "Layihə smetası", path: "/main-smeta", pro: false },
+            {
+              name: "Layihə rəhbərinin və icraçıların xidmət haqqı smetası",
+              path: "/project-smeta-salary",
+              pro: false,
+            },
+            {
+              name: "Avadanlıq, cihaz, qurğu və mal-materialların satınalınması smetası",
+              path: "/project-smeta-tools",
+              pro: false,
+            },
+            {
+              name: "İşlərin və xidmətlərin satınalınması smetası",
+              path: "/project-smeta-services",
+              pro: false,
+            },
+            {
+              name: "Layihə üzrə icarə xərclər smetası",
+              path: "/project-smeta-expences",
+              pro: false,
+            },
+            {
+              name: "Digər birbaşa xərclər smetası",
+              path: "/project-smeta-other-expences",
+              pro: false,
+            },
+          ],
+        },
+      ]
+      : []),
+  ];
+
   const { isExpanded, isMobileOpen, isHovered } = useSidebar();
   const location = useLocation();
 
   const [openSubmenus, setOpenSubmenus] = useState<Record<string, boolean>>(() => {
     const initialState: Record<string, boolean> = {};
-    [...navItems, ...othersItems].forEach((item) => {
+    [...navItemsWithProject, ...othersItems].forEach((item) => {
       if (item.subItems) {
         initialState[item.name] = true;
       }
@@ -269,7 +307,7 @@ const AppSidebar: React.FC = () => {
                   <HorizontaLDots className="size-6" />
                 )}
               </h2>
-              {renderMenuItems(navItems, "main")}
+              {renderMenuItems(navItemsWithProject, "main")}
             </div>
           </div>
         </nav>

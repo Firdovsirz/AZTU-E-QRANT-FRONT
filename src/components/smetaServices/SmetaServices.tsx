@@ -1,4 +1,21 @@
-import React, { useState, useEffect } from "react";
+import {
+    Table,
+    TableHeader,
+    TableBody,
+    TableRow,
+    TableCell,
+    TableFooter
+} from "../ui/table";
+import Swal from 'sweetalert2';
+import { useSelector } from "react-redux";
+import { useLocation } from "react-router";
+import { useState, useEffect } from "react";
+import Input from "../form/input/InputField";
+import apiClient from "../../util/apiClient";
+import { RootState } from "../../redux/store";
+import DoneIcon from '@mui/icons-material/Done';
+import DeleteIcon from '@mui/icons-material/Delete';
+
 interface ServiceItem {
     project_code: number;
     fin_code?: string;
@@ -8,29 +25,15 @@ interface ServiceItem {
     quantity: number;
     total_amount: number;
 }
-import {
-    Table,
-    TableHeader,
-    TableBody,
-    TableRow,
-    TableCell, TableFooter
-} from "../ui/table";
-import Input from "../form/input/InputField";
-import DoneIcon from '@mui/icons-material/Done';
-import apiClient from "../../util/apiClient";
-import Swal from 'sweetalert2';
 
-
-export default function SmetaServices() {
+export default function SmetaServices({ projectCode }: { projectCode: Number | null }) {
     const [servicesName, setServicesName] = useState('');
     const [unitOfMeasure, setUnitOfMeasure] = useState('');
     const [price, setPrice] = useState(0);
     const [quantity, setQuantity] = useState(0);
-    const projectCode = 58744983;
-
     const [services, setServices] = useState<ServiceItem[]>([]);
     const totalAmount = services.reduce((sum, item) => sum + item.total_amount, 0);
-
+    const projectRole = useSelector((state: RootState) => state.auth.projectRole);
 
     useEffect(() => {
         const fetchServices = async () => {
@@ -78,6 +81,17 @@ export default function SmetaServices() {
             window.location.reload();
         }
     };
+
+    const location = useLocation();
+
+    const [viewOnly, setViewOnly] = useState<boolean>(false);
+
+    useEffect(() => {
+        if (location.pathname.startsWith("/project-view/")) {
+            setViewOnly(true);
+        }
+    }, [location.pathname])
+    console.log(location.pathname);
 
     return (
         <>
@@ -143,54 +157,68 @@ export default function SmetaServices() {
                                     <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
                                         {service.total_amount}
                                     </TableCell>
+                                    <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                                        <p className="bg-green-200 dark:bg-green-600 text-green-900 dark:text-green-100 px-2 py-1 rounded-[20px] inline-block">
+                                            Təsdiq olunub
+                                        </p>
+                                    </TableCell>
+                                    {projectRole === 0 && !viewOnly ? (
+                                        <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                                            <div className="bg-red-500 rounded-[10px] inline-flex items-center justify-center p-1 cursor-pointer w-[35px] h-[35px]">
+                                                <DeleteIcon className="text-white cursor-pointer" />
+                                            </div>
+                                        </TableCell>
+                                    ) : null}
                                 </TableRow>
                             ))}
 
-                            <TableRow>
-                                <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                                    <Input
-                                        type="text"
-                                        value={servicesName}
-                                        onChange={(e) => setServicesName(e.target.value)}
-                                        className="w-full bg-transparent border-b border-gray-300 focus:outline-none"
-                                    />
-                                </TableCell>
-                                <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                                    <Input
-                                        type="text"
-                                        value={unitOfMeasure}
-                                        onChange={(e) => setUnitOfMeasure(e.target.value)}
-                                        className="w-full bg-transparent border-b border-gray-300 focus:outline-none"
-                                    />
-                                </TableCell>
-                                <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                                    <Input
-                                        type="text"
-                                        value={price}
-                                        onChange={(e) => setPrice(Number(e.target.value))}
-                                        className="w-full bg-transparent border-b border-gray-300 focus:outline-none"
-                                    />
-                                </TableCell>
-                                <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                                    <Input
-                                        type="text"
-                                        value={quantity}
-                                        onChange={(e) => setQuantity(Number(e.target.value))}
-                                        className="w-full bg-transparent border-b border-gray-300 focus:outline-none"
-                                    />
-                                </TableCell>
-                                <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                                    {price * quantity}
-                                </TableCell>
-                                <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                                    <div
-                                        onClick={handleSubmit}
-                                        className="bg-green-500 rounded-[10px] inline-flex items-center justify-center p-1 cursor-pointer w-[35px] h-[35px]"
-                                    >
-                                        <DoneIcon className="text-white cursor-pointer" />
-                                    </div>
-                                </TableCell>
-                            </TableRow>
+                            {projectRole === 0 && !viewOnly ? (
+                                <TableRow>
+                                    <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                                        <Input
+                                            type="text"
+                                            value={servicesName}
+                                            onChange={(e) => setServicesName(e.target.value)}
+                                            className="w-full bg-transparent border-b border-gray-300 focus:outline-none"
+                                        />
+                                    </TableCell>
+                                    <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                                        <Input
+                                            type="text"
+                                            value={unitOfMeasure}
+                                            onChange={(e) => setUnitOfMeasure(e.target.value)}
+                                            className="w-full bg-transparent border-b border-gray-300 focus:outline-none"
+                                        />
+                                    </TableCell>
+                                    <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                                        <Input
+                                            type="text"
+                                            value={price}
+                                            onChange={(e) => setPrice(Number(e.target.value))}
+                                            className="w-full bg-transparent border-b border-gray-300 focus:outline-none"
+                                        />
+                                    </TableCell>
+                                    <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                                        <Input
+                                            type="text"
+                                            value={quantity}
+                                            onChange={(e) => setQuantity(Number(e.target.value))}
+                                            className="w-full bg-transparent border-b border-gray-300 focus:outline-none"
+                                        />
+                                    </TableCell>
+                                    <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                                        {price * quantity}
+                                    </TableCell>
+                                    <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                                        <div
+                                            onClick={handleSubmit}
+                                            className="bg-green-500 rounded-[10px] inline-flex items-center justify-center p-1 cursor-pointer w-[35px] h-[35px]"
+                                        >
+                                            <DoneIcon className="text-white cursor-pointer" />
+                                        </div>
+                                    </TableCell>
+                                </TableRow>
+                            ) : null}
                         </TableBody>
                         <TableFooter className="border-t border-gray-700 divide-y divide-gray-100 dark:divide-white/[0.05]">
                             <TableRow>

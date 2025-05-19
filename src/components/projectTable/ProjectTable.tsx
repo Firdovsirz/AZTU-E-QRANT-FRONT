@@ -6,18 +6,18 @@ import {
     TableRow
 } from "../ui/table";
 import Swal from "sweetalert2";
+import { Link } from "react-router-dom";
 import Button from "../ui/button/Button";
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
-import VisibilityIcon from '@mui/icons-material/Visibility';
+import { useSelector } from "react-redux";
 import { useEffect, useState } from "react";
 import apiClient from "../../util/apiClient";
-import { useSelector } from "react-redux";
 import { RootState } from "../../redux/store";
+import VisibilityIcon from '@mui/icons-material/Visibility';
 
 export default function ProjectTable() {
     const [projects, setProjects] = useState<any[]>([]);
     const fin_kod = useSelector((state: RootState) => state.auth.fin_kod);
+    const projectRole = useSelector((state: RootState) => state.auth.projectRole);
 
     useEffect(() => {
         const fetchProjects = async () => {
@@ -42,22 +42,22 @@ export default function ProjectTable() {
             console.log(response.data); // Or show a success message
             alert('İştirakçı olaraq əlavə olundunuz!');
         } catch (error: any) {
-             if (error.response?.status === 403) {
-                            Swal.fire({
-                                title: 'Xəta!',
-                                text: 'Layihəni təsdiq etmək üçün ilk növbədə şəxsi məlumatlarınızı təmin etməlisiniz!',
-                                icon: 'error',
-                                showCancelButton: true,
-                                confirmButtonText: 'Şəxsi məlumatlara keç',
-                                cancelButtonText: 'Bağla'
-                            }).then((result) => {
-                                if (result.isConfirmed) {
-                                    window.location.href = '/user-details'; // adjust the route if needed
-                                }
-                            });
-                        } else {
-                            Swal.fire('Xəta!', 'Serverlə əlaqə zamanı xəta baş verdi.', 'error');
-                        }
+            if (error.response?.status === 403) {
+                Swal.fire({
+                    title: 'Xəta!',
+                    text: 'Layihəni təsdiq etmək üçün ilk növbədə şəxsi məlumatlarınızı təmin etməlisiniz!',
+                    icon: 'error',
+                    showCancelButton: true,
+                    confirmButtonText: 'Şəxsi məlumatlara keç',
+                    cancelButtonText: 'Bağla'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        window.location.href = '/user-details'; // adjust the route if needed
+                    }
+                });
+            } else {
+                Swal.fire('Xəta!', 'Serverlə əlaqə zamanı xəta baş verdi.', 'error');
+            }
         }
     };
 
@@ -99,12 +99,14 @@ export default function ProjectTable() {
                                 >
                                     Baxış
                                 </TableCell>
-                                <TableCell
-                                    isHeader
-                                    className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
-                                >
-                                    İştirakçı Ol
-                                </TableCell>
+                                {projectRole === 1 ? (
+                                    <TableCell
+                                        isHeader
+                                        className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
+                                    >
+                                        İştirakçı Ol
+                                    </TableCell>
+                                ) : null}
                                 {/* <TableCell
                             isHeader
                             className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
@@ -144,18 +146,22 @@ export default function ProjectTable() {
                                         )}
                                     </TableCell>
                                     <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                                        <VisibilityIcon
-                                            style={{ width: 35, height: 35 }}
-                                            className="cursor-pointer bg-blue-100 text-blue-600 rounded p-1 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-400 dark:hover:bg-blue-700 transition-colors duration-200"
-                                        />
+                                        <Link to={`/project-view/${project.project_code}`}>
+                                            <VisibilityIcon
+                                                style={{ width: 35, height: 35 }}
+                                                className="cursor-pointer bg-blue-100 text-blue-600 rounded p-1 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-400 dark:hover:bg-blue-700 transition-colors duration-200"
+                                            />
+                                        </Link>
                                     </TableCell>
-                                    <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                                        {fin_kod && (
-                                            <Button onClick={() => handleBeCollaborator(fin_kod, project.project_code)}>
-                                                İştirakçı Ol
-                                            </Button>
-                                        )}
-                                    </TableCell>
+                                    {projectRole === 1 ? (
+                                        <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                                            {fin_kod && (
+                                                <Button onClick={() => handleBeCollaborator(fin_kod, project.project_code)}>
+                                                    İştirakçı Ol
+                                                </Button>
+                                            )}
+                                        </TableCell>
+                                    ) : null}
                                 </TableRow>
                             ))}
                         </TableBody>

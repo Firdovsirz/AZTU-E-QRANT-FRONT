@@ -1,17 +1,17 @@
-import Swal from 'sweetalert2';
 import {
     Table,
     TableHeader,
     TableBody,
     TableRow,
-    TableCell, TableFooter
+    TableCell,
+    TableFooter
 } from "../ui/table";
+import Swal from 'sweetalert2';
+import { useLocation } from "react-router";
 import { useEffect, useState } from "react";
 import Input from "../form/input/InputField";
 import apiClient from "../../util/apiClient";
 import DoneIcon from '@mui/icons-material/Done';
-// import { useSelector } from "react-redux";
-// import { RootState } from "../../redux/store";
 
 interface SalaryData {
     id: number;
@@ -38,11 +38,9 @@ interface Collaborator {
     salary?: SalaryData | null;
 }
 
-export default function SmetaSalary() {
-    const projectCode = 58744983;
+export default function SmetaSalary({ projectCode }: { projectCode: Number | null }) {
     const [owner, setOwner] = useState<Owner>();
     const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
-
     const [ownerInputs, setOwnerInputs] = useState({ salary: "", months: "" });
     const [collabInputs, setCollabInputs] = useState<{ [finKod: string]: { salary: string, months: string } }>({});
 
@@ -91,6 +89,18 @@ export default function SmetaSalary() {
     const totalAllSalaries = (owner?.salary?.total_salary || 0) + collaborators.reduce((sum, collaborator) => {
         return sum + (collaborator.salary?.total_salary || 0);
     }, 0);
+
+    const location = useLocation();
+
+    const [viewOnly, setViewOnly] = useState<boolean>(false);
+
+    useEffect(() => {
+        if (location.pathname.startsWith("/project-view/")) {
+            setViewOnly(true);
+        }
+    }, [location.pathname])
+    console.log(location.pathname);
+
     return (
         <>
             <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
@@ -129,12 +139,14 @@ export default function SmetaSalary() {
                                 >
                                     Layihə üzrə ümumi xidmət haqqı
                                 </TableCell>
-                                <TableCell
-                                    isHeader
-                                    className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
-                                >
-                                    Təsdiq et
-                                </TableCell>
+                                {owner?.salary && !viewOnly ? (
+                                    <TableCell
+                                        isHeader
+                                        className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
+                                    >
+                                        Təsdiq et
+                                    </TableCell>
+                                ) : null}
                             </TableRow>
                         </TableHeader>
                         <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
@@ -170,14 +182,16 @@ export default function SmetaSalary() {
                                 <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
                                     {owner?.salary?.total_salary}
                                 </TableCell>
-                                <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                                    <div className="bg-green-500 rounded-[10px] inline-flex items-center justify-center p-1 cursor-pointer w-[35px] h-[35px]">
-                                        <DoneIcon
-                                            className="text-white cursor-pointer"
-                                            onClick={() => handleSaveSalary(owner?.fin_kod || "", ownerInputs.salary, ownerInputs.months)}
-                                        />
-                                    </div>
-                                </TableCell>
+                                {!viewOnly ? (
+                                    <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                                        <div className="bg-green-500 rounded-[10px] inline-flex items-center justify-center p-1 cursor-pointer w-[35px] h-[35px]">
+                                            <DoneIcon
+                                                className="text-white cursor-pointer"
+                                                onClick={() => handleSaveSalary(owner?.fin_kod || "", ownerInputs.salary, ownerInputs.months)}
+                                            />
+                                        </div>
+                                    </TableCell>
+                                ) : null}
                             </TableRow>
                             {collaborators.map((collaborator, index) => {
                                 return (
@@ -229,20 +243,22 @@ export default function SmetaSalary() {
                                         <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
                                             {collaborator.salary?.total_salary}
                                         </TableCell>
-                                        <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                                            <div className="bg-green-500 rounded-[10px] inline-flex items-center justify-center p-1 cursor-pointer w-[35px] h-[35px]">
-                                                <DoneIcon
-                                                    className="text-white cursor-pointer"
-                                                    onClick={() =>
-                                                        handleSaveSalary(
-                                                            collaborator.fin_kod || "",
-                                                            collabInputs[collaborator.fin_kod || ""]?.salary || "",
-                                                            collabInputs[collaborator.fin_kod || ""]?.months || ""
-                                                        )
-                                                    }
-                                                />
-                                            </div>
-                                </TableCell>
+                                        {!viewOnly ? (
+                                            <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                                                <div className="bg-green-500 rounded-[10px] inline-flex items-center justify-center p-1 cursor-pointer w-[35px] h-[35px]">
+                                                    <DoneIcon
+                                                        className="text-white cursor-pointer"
+                                                        onClick={() =>
+                                                            handleSaveSalary(
+                                                                collaborator.fin_kod || "",
+                                                                collabInputs[collaborator.fin_kod || ""]?.salary || "",
+                                                                collabInputs[collaborator.fin_kod || ""]?.months || ""
+                                                            )
+                                                        }
+                                                    />
+                                                </div>
+                                            </TableCell>
+                                        ) : null}
                                     </TableRow>
                                 )
                             })}

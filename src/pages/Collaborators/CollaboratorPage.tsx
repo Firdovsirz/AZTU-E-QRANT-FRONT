@@ -1,10 +1,12 @@
 import PageMeta from "../../components/common/PageMeta";
 import PageBreadcrumb from "../../components/common/PageBreadCrumb";
-import ProjectTable from "../../components/projectTable/ProjectTable";
-import MainSmeta from "../../components/mainSmeta/MainSmeta";
 import Collaborators from "../../components/collaborators/Collaborators";
+import { useSelector } from "react-redux";
+import { RootState } from "../../redux/store";
 
 export default function CollaboratorPage() {
+  const projectCode = useSelector((state: RootState) => state.auth.projectCode);
+
   return (
     <div>
       <PageMeta
@@ -12,7 +14,7 @@ export default function CollaboratorPage() {
         description="This is React.js Form Elements  Dashboard page for TailAdmin - React.js Tailwind CSS Admin Dashboard Template"
       />
       <PageBreadcrumb pageTitle="Projects" />
-      <Collaborators />
+      <Collaborators projectCode={projectCode} />
     </div>
   );
 }

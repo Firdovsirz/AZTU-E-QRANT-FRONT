@@ -39,7 +39,9 @@ interface UserProfile {
 export default function UserInfoCard() {
   const { isOpen, openModal, closeModal } = useModal();
   const [user, setUser] = useState<UserProfile | null>(null)
-  const fin_kod = useSelector((state: RootState) => state.auth.user.fin_kod);
+  const fin_kod = useSelector((state: RootState) => state.auth.fin_kod);
+  console.log(fin_kod);
+  
   useEffect(() => {
     apiClient.get(`/api/profile/${fin_kod}`)
       .then((res) => setUser(res.data.data))

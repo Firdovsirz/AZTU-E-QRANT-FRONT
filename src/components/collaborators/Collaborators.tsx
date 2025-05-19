@@ -5,12 +5,25 @@ import {
     TableRow,
     TableCell
 } from "../ui/table"
+import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import apiClient from "../../util/apiClient";
+import Profile from "../../../public/profile.webp";
+import VisibilityIcon from '@mui/icons-material/Visibility';
 
-export default function Collaborators() {
-    const [collaborators, setCollaborators] = useState([]);
-    const projectCode = 58744983;
+interface Collaborator {
+    name: string;
+    surname: string;
+    father_name: string;
+    fin_kod: string;
+    projectRole: number;
+    image?: {
+        image: string | null;
+    } | null;
+}
+
+export default function Collaborators({ projectCode }: { projectCode: Number | null}) {
+    const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
 
     useEffect(() => {
         const fetchCollaborators = async () => {
@@ -43,26 +56,60 @@ export default function Collaborators() {
                                 >
                                     Fin Kod
                                 </TableCell>
+                                <TableCell
+                                    isHeader
+                                    className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
+                                >
+                                    Layihə Rolu
+                                </TableCell>
+                                <TableCell
+                                    isHeader
+                                    className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
+                                >
+                                     Baxış
+                                </TableCell>
                             </TableRow>
                         </TableHeader>
                         <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
-                            {collaborators.map((collaborator, index) => (
-                                <TableRow key={index}>
-                                    <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                                        <div className="flex items-center gap-3">
-                                            <img
-                                                src={collaborator.image}
-                                                alt={`${collaborator.name} ${collaborator.surname}`}
-                                                className="w-8 h-8 rounded-full object-cover"
+                            {collaborators.map((collaborator, index) => {
+                                return (
+                                    <TableRow key={index}>
+                                        <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                                            <div className="flex items-center gap-3">
+                                                {collaborator?.image?.image ? (
+
+                                                    <img
+                                                        src={`data:image/jpeg;base64,${collaborator?.image?.image}`}
+                                                        alt={`${collaborator.name} ${collaborator.surname}`}
+                                                        className="w-8 h-8 rounded-full object-cover"
+                                                    />
+                                                ) : (
+                                                    <img
+                                                        src={Profile}
+                                                        alt="User"
+                                                        className="w-[fit-content] h-[fit-content] rounded-full object-cover border border-gray-300"
+                                                    />
+                                                )}
+                                                <span>{collaborator.name} {collaborator.surname} {collaborator.father_name}</span>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                                            {collaborator.fin_kod}
+                                        </TableCell>
+                                        <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                                            Layihə İştirakçısı
+                                        </TableCell>
+                                         <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                                        <Link to={`/user-view/${collaborator.fin_kod}`}>
+                                            <VisibilityIcon
+                                                style={{ width: 35, height: 35 }}
+                                                className="cursor-pointer bg-blue-100 text-blue-600 rounded p-1 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-400 dark:hover:bg-blue-700 transition-colors duration-200"
                                             />
-                                            <span>{collaborator.name} {collaborator.surname}</span>
-                                        </div>
+                                        </Link>
                                     </TableCell>
-                                    <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                                        {collaborator.fin_kod}
-                                    </TableCell>
-                                </TableRow>
-                            ))}
+                                    </TableRow>
+                                )
+                            })}
                         </TableBody>
                     </Table>
                 </div>
