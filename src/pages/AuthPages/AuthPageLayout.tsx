@@ -1,6 +1,7 @@
 import React from "react";
 import GridShape from "../../components/common/GridShape";
 import { Link } from "react-router";
+import Logo from "../../../public/e-qrant-logo.jpeg"
 import ThemeTogglerTwo from "../../components/common/ThemeTogglerTwo";
 
 export default function AuthLayout({
@@ -18,6 +19,7 @@ export default function AuthLayout({
             <GridShape />
             <div className="flex flex-col items-center max-w-xs">
               <Link to="/" className="block mb-4">
+              <img src={Logo} alt="" />
                 <h1 className="text-[40px] text-center text-gray-400 dark:text-white/60">AzTU E-Qrant</h1>
               </Link>
             </div>

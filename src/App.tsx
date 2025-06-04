@@ -5,6 +5,7 @@ import SignUp from "./pages/AuthPages/SignUp";
 import UserProfiles from "./pages/UserProfiles";
 import NotFound from "./pages/OtherPage/NotFound";
 import { Provider, useSelector } from "react-redux";
+import UserViewPage from "./pages/UserView/UserViewPage";
 import { RootState, store, persistor } from "./redux/store";
 import MainSmetaPage from "./pages/MainSmeta/MainSmetaPage";
 import { ScrollToTop } from "./components/common/ScrollToTop";
@@ -13,6 +14,7 @@ import SmetaToolsPage from "./pages/SmetaTools/SmetaToolsPage";
 import SmetaOtherPage from "./pages/SmetaOther/SmetaOtherPage";
 import UserDetailsPage from "./pages/UserDetails/UserDetailsPage";
 import SmetaSalaryPage from "./pages/SmetaSalary/SmetaSalaryPage";
+import ProjectViewPage from "./pages/ProjectView/ProjectViewPage";
 import ProjectTablePage from "./pages/ProjectTable/ProjectTablePage";
 import UserTypeChoicePage from "./pages/AuthPages/UserTypeChoicePage";
 import CollaboratorPage from "./pages/Collaborators/CollaboratorPage";
@@ -21,8 +23,6 @@ import SmetaExpensesPage from "./pages/SmetaExpenses/SmetaExpensesPage";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import AcademicTypeChoicePage from "./pages/AuthPages/AcademicTypeChoicePage";
 import ProjectDetailsPage from "./pages/ProjectDetailsPage/ProjectDetailsPage";
-import ProjectViewPage from "./pages/ProjectView/ProjectViewPage";
-import UserViewPage from "./pages/UserView/UserViewPage";
 
 export default function App() {
   return (
