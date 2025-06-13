@@ -61,7 +61,7 @@ export default function SignInForm() {
         dispatch(setFinKod(finKod));
         dispatch(loginSuccess({ token, user: authData, projectCode, profileCompleted }));
         {projectRole === 0 ? navigate("/project-offer") : navigate("/")}
-        // navigate("/");
+        navigate("/home");
       }
     } catch (error) {
       Swal.fire("Xəta baş verdi", "Fin kod və ya şifrə yanlışdır", "error");

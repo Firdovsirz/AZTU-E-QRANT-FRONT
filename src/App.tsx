@@ -50,7 +50,7 @@ function AppWithRouter() {
       <ScrollToTop />
       <Routes>
         <Route element={<AppLayout />}>
-          <Route index path="/" element={<Home />} />
+          <Route index path="/home" element={<Home />} />
           <Route path="/profile" element={<UserProfiles />} />
           <Route path="/project-offer" element={<ProjectDetailsPage />} />
           <Route path="/user-details/:fin_kod" element={<UserDetailsPage />} />
@@ -67,7 +67,7 @@ function AppWithRouter() {
         </Route>
 
         <Route
-          path="/signin"
+          path="/"
           element={
             userType === null ? (
               <UserTypeChoicePage />
