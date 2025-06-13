@@ -152,10 +152,10 @@ const AppSidebar: React.FC = () => {
     [location.pathname]
   );
 
-  const renderMenuItems = (items: NavItem[], menuType: "main" | "others") => (
+  const renderMenuItems = (items: NavItem[]) => (
     <ul className="flex flex-col gap-4">
       {items.map((nav, index) => (
-        <li key={nav.name}>
+        <li key={index}>
           {nav.subItems ? (
             <div
               onClick={() => toggleSubmenu(nav.name)}
@@ -307,7 +307,7 @@ const AppSidebar: React.FC = () => {
                   <HorizontaLDots className="size-6" />
                 )}
               </h2>
-              {renderMenuItems(navItemsWithProject, "main")}
+              {renderMenuItems(navItemsWithProject)}
             </div>
           </div>
         </nav>

@@ -1,18 +1,17 @@
 import Swal from "sweetalert2";
-import { useEffect, useState } from "react";
 import Label from "../form/Label";
 import Select from "../form/Select";
 import Button from "../ui/button/Button";
+import { useSelector } from "react-redux";
 import { useNavigate } from "react-router";
+import { useEffect, useState } from "react";
 import Input from "../form/input/InputField";
 import apiClient from "../../util/apiClient";
-import PhoneInput from "../form/group-input/PhoneInput";
-import DropzoneComponent from "../../components/form/form-elements/DropZone";
-import { useSelector } from "react-redux";
 import { RootState } from "../../redux/store";
 import Profile from "../../../public/profile.webp";
+import PhoneInput from "../form/group-input/PhoneInput";
+import DropzoneComponent from "../../components/form/form-elements/DropZone";
 
-// Define interface for form data
 interface UserDetailsFormData {
     name: string;
     surname: string;
