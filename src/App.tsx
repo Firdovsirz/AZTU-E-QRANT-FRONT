@@ -20,7 +20,7 @@ import UserTypeChoicePage from "./pages/AuthPages/UserTypeChoicePage";
 import CollaboratorPage from "./pages/Collaborators/CollaboratorPage";
 import SmetaServicesPage from "./pages/SmetaServices/SmetaServicesPage";
 import SmetaExpensesPage from "./pages/SmetaExpenses/SmetaExpensesPage";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import AcademicTypeChoicePage from "./pages/AuthPages/AcademicTypeChoicePage";
 import ProjectDetailsPage from "./pages/ProjectDetailsPage/ProjectDetailsPage";
 
@@ -44,27 +44,34 @@ function AppWithRouter() {
   console.log(projectRole);
   const projectCode = useSelector((state: RootState) => state.auth.projectCode);
   console.log(projectCode);
+  const token = useSelector((state: RootState) => state.auth.token);
+  console.log(token);
+  
 
   return (
     <Router>
       <ScrollToTop />
       <Routes>
-        <Route element={<AppLayout />}>
-          <Route index path="/home" element={<Home />} />
-          <Route path="/profile" element={<UserProfiles />} />
-          <Route path="/project-offer" element={<ProjectDetailsPage />} />
-          <Route path="/user-details/:fin_kod" element={<UserDetailsPage />} />
-          <Route path="/projects" element={<ProjectTablePage />} />
-          <Route path="/collaborators" element={<CollaboratorPage />} />
-          <Route path="/main-smeta" element={<MainSmetaPage />} />
-          <Route path="/project-smeta-salary" element={<SmetaSalaryPage />} />
-          <Route path="/project-smeta-tools" element={<SmetaToolsPage />} />
-          <Route path="/project-smeta-services" element={<SmetaServicesPage />} />
-          <Route path="/project-smeta-expences" element={<SmetaExpensesPage />} />
-          <Route path="/project-smeta-other-expences" element={<SmetaOtherPage />} />
-          <Route path="/project-view/:projectCode" element={<ProjectViewPage />} />
-          <Route path="/user-view/:fin_kod" element={<UserViewPage />} />
-        </Route>
+        {token ? (
+          <Route element={<AppLayout />}>
+            <Route index path="/home" element={<Home />} />
+            <Route path="/profile" element={<UserProfiles />} />
+            <Route path="/project-offer" element={<ProjectDetailsPage />} />
+            <Route path="/user-details/:fin_kod" element={<UserDetailsPage />} />
+            <Route path="/projects" element={<ProjectTablePage />} />
+            <Route path="/collaborators" element={<CollaboratorPage />} />
+            <Route path="/main-smeta" element={<MainSmetaPage />} />
+            <Route path="/project-smeta-salary" element={<SmetaSalaryPage />} />
+            <Route path="/project-smeta-tools" element={<SmetaToolsPage />} />
+            <Route path="/project-smeta-services" element={<SmetaServicesPage />} />
+            <Route path="/project-smeta-expences" element={<SmetaExpensesPage />} />
+            <Route path="/project-smeta-other-expences" element={<SmetaOtherPage />} />
+            <Route path="/project-view/:projectCode" element={<ProjectViewPage />} />
+            <Route path="/user-view/:fin_kod" element={<UserViewPage />} />
+          </Route>
+        ) : (
+          <Route path="*" element={<Navigate to="/" />} />
+        )}
 
         <Route
           path="/"

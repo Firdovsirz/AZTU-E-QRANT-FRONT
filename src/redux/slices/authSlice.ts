@@ -72,5 +72,6 @@ export const {
   setFinKod,
   loginSuccess,
   clearLoginSteps,
+  logout
 } = authSlice.actions;
 export default authSlice.reducer;
