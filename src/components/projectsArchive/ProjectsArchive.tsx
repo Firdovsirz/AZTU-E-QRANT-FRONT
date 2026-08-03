@@ -5,6 +5,7 @@ import {
     TableRow,
     TableCell,
 } from "../ui/table";
+import Swal from "sweetalert2";
 import { Link } from "react-router-dom";
 import Badge from "../ui/badge/Badge";
 import ReadMore from "../ui/ReadMore";
@@ -12,6 +13,8 @@ import { useEffect, useMemo, useState } from "react";
 import apiClient from "../../util/apiClient";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import VisibilityIcon from "@mui/icons-material/Visibility";
+import LockIcon from "@mui/icons-material/Lock";
+import LockOpenIcon from "@mui/icons-material/LockOpen";
 import CircularProgress from "@mui/material/CircularProgress";
 
 interface ArchivedProject {
@@ -21,12 +24,15 @@ interface ArchivedProject {
     winner: boolean | null;
     competition_year: number | null;
     competition_code: string | null;
+    edit_unlocked: boolean | null;
     user: { name: string | null; surname: string | null } | null;
 }
 
 export default function ProjectsArchive() {
     const [loading, setLoading] = useState(true);
     const [projects, setProjects] = useState<ArchivedProject[]>([]);
+    // project_code currently being toggled — keeps the row's button busy
+    const [savingCode, setSavingCode] = useState<number | null>(null);
 
     useEffect(() => {
         const load = async () => {
@@ -56,6 +62,46 @@ export default function ProjectsArchive() {
             return yb - ya;
         });
     }, [projects]);
+
+    // Hand an archived project back to its owner (or take it back again).
+    const toggleEditAccess = async (project: ArchivedProject) => {
+        const willUnlock = !project.edit_unlocked;
+
+        const confirmation = await Swal.fire({
+            title: willUnlock ? "Redaktəyə icazə verilsin?" : "Redaktə bağlansın?",
+            text: willUnlock
+                ? "Layihə rəhbəri arxivdəki bu layihədə smeta xaricində bütün dəyişiklikləri edə biləcək."
+                : "Layihə rəhbəri bu layihəni artıq redaktə edə bilməyəcək.",
+            icon: "question",
+            showCancelButton: true,
+            confirmButtonText: willUnlock ? "Bəli, icazə ver" : "Bəli, bağla",
+            cancelButtonText: "Xeyr",
+        });
+        if (!confirmation.isConfirmed) return;
+
+        setSavingCode(project.project_code);
+        try {
+            await apiClient.post("/api/project/archive/edit-access", {
+                project_code: project.project_code,
+                unlocked: willUnlock,
+            });
+            setProjects((prev) =>
+                prev.map((p) =>
+                    p.project_code === project.project_code ? { ...p, edit_unlocked: willUnlock } : p
+                )
+            );
+            Swal.fire(
+                "Uğur!",
+                willUnlock ? "Layihə redaktə üçün açıldı." : "Layihə redaktəyə bağlandı.",
+                "success"
+            );
+        } catch (error) {
+            console.error("Failed to change archive edit access:", error);
+            Swal.fire("Xəta!", "Redaktə icazəsi dəyişdirilə bilmədi.", "error");
+        } finally {
+            setSavingCode(null);
+        }
+    };
 
     if (loading) {
         return (
@@ -90,6 +136,7 @@ export default function ProjectsArchive() {
                                         <TableCell isHeader className="px-5 py-3 text-start">Layihə adı</TableCell>
                                         <TableCell isHeader className="px-5 py-3 text-start">Rəhbər</TableCell>
                                         <TableCell isHeader className="px-5 py-3 text-start">Status</TableCell>
+                                        <TableCell isHeader className="px-5 py-3 text-start">Redaktə icazəsi</TableCell>
                                         <TableCell isHeader className="px-5 py-3 text-start">Baxış</TableCell>
                                     </TableRow>
                                 </TableHeader>
@@ -109,6 +156,29 @@ export default function ProjectsArchive() {
                                                         <Badge color="warning" size="sm" startIcon={<EmojiEventsIcon style={{ width: 13, height: 13 }} />}>Qalib</Badge>
                                                     )}
                                                 </span>
+                                            </TableCell>
+                                            <TableCell className="px-4 py-3">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => toggleEditAccess(p)}
+                                                    disabled={savingCode === p.project_code}
+                                                    title={p.edit_unlocked
+                                                        ? "Rəhbərin redaktə icazəsini bağla"
+                                                        : "Rəhbərə redaktə icazəsi ver"}
+                                                    className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${p.edit_unlocked
+                                                        ? "bg-success-50 text-success-600 hover:bg-success-100 dark:bg-success-500/15 dark:text-success-400"
+                                                        : "bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-white/[0.06] dark:text-gray-400 dark:hover:bg-white/[0.1]"
+                                                        }`}
+                                                >
+                                                    {savingCode === p.project_code ? (
+                                                        <CircularProgress size={14} color="inherit" />
+                                                    ) : p.edit_unlocked ? (
+                                                        <LockOpenIcon style={{ width: 15, height: 15 }} />
+                                                    ) : (
+                                                        <LockIcon style={{ width: 15, height: 15 }} />
+                                                    )}
+                                                    {p.edit_unlocked ? "Açıqdır" : "Bağlıdır"}
+                                                </button>
                                             </TableCell>
                                             <TableCell className="px-4 py-3">
                                                 <Link to={`/project-view/${p.project_code}`}>

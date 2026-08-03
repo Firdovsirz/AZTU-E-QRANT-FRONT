@@ -4,6 +4,8 @@ import Badge from "../ui/badge/Badge";
 import ReadMore from "../ui/ReadMore";
 import apiClient from "../../util/apiClient";
 import WorkIcon from "@mui/icons-material/Work";
+import EditIcon from "@mui/icons-material/Edit";
+import LockOpenIcon from "@mui/icons-material/LockOpen";
 import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import CircularProgress from "@mui/material/CircularProgress";
@@ -17,6 +19,9 @@ interface HistoryItem {
     winner: boolean | null;
     competition_year: number | null;
     competition_code: string | null;
+    archived: boolean | null;
+    // true only for a lead whose archived project an admin unlocked
+    editable: boolean | null;
 }
 
 export default function ProjectHistory() {
@@ -53,10 +58,9 @@ export default function ProjectHistory() {
             ) : (
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                     {items.map((item, idx) => (
-                        <Link
-                            to={`/project-view/${item.project_code}`}
+                        <div
                             key={`${item.project_code}-${item.role}-${idx}`}
-                            className="group block rounded-xl border border-gray-100 p-4 transition-all hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-theme-sm dark:border-white/[0.05]"
+                            className="rounded-xl border border-gray-100 p-4 transition-all hover:border-brand-300 hover:shadow-theme-sm dark:border-white/[0.05]"
                         >
                             <div className="mb-2 flex flex-wrap items-center gap-2">
                                 {item.competition_year && <Badge color="light" size="sm">{item.competition_year}</Badge>}
@@ -73,17 +77,35 @@ export default function ProjectHistory() {
                                 ) : (
                                     <Badge color="light" size="sm">Qaralama</Badge>
                                 )}
+                                {item.editable && (
+                                    <Badge color="success" size="sm" startIcon={<LockOpenIcon style={{ width: 13, height: 13 }} />}>
+                                        Redaktəyə açıqdır
+                                    </Badge>
+                                )}
                             </div>
                             <ReadMore text={item.project_name || "Adsız layihə"} lines={2} className="text-sm font-medium text-gray-800 dark:text-gray-100" />
-                            <div className="mt-2 flex items-center justify-between">
+                            <div className="mt-3 flex items-center justify-between gap-2">
                                 {item.competition_code ? (
                                     <span className="text-xs text-gray-400">{item.competition_code}</span>
                                 ) : <span />}
-                                <span className="inline-flex items-center gap-1 text-xs font-semibold text-brand-600 opacity-0 transition-opacity group-hover:opacity-100 dark:text-brand-300">
-                                    <VisibilityIcon style={{ width: 14, height: 14 }} /> Bax
+                                <span className="inline-flex items-center gap-3">
+                                    {item.editable && (
+                                        <Link
+                                            to={`/archive/project/${item.project_code}/edit`}
+                                            className="inline-flex items-center gap-1 text-xs font-semibold text-success-600 hover:underline dark:text-success-400"
+                                        >
+                                            <EditIcon style={{ width: 14, height: 14 }} /> Redaktə et
+                                        </Link>
+                                    )}
+                                    <Link
+                                        to={`/project-view/${item.project_code}`}
+                                        className="inline-flex items-center gap-1 text-xs font-semibold text-brand-600 hover:underline dark:text-brand-300"
+                                    >
+                                        <VisibilityIcon style={{ width: 14, height: 14 }} /> Bax
+                                    </Link>
                                 </span>
                             </div>
-                        </Link>
+                        </div>
                     ))}
                 </div>
             )}

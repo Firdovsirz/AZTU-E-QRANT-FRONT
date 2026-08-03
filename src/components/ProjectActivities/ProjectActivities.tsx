@@ -27,8 +27,13 @@ interface ProjectActivity {
     updated_at: string | null;
 }
 
-const ProjectActivitiesTable = () => {
-    const projectCode = useSelector((state: RootState) => state.auth.projectCode);
+/**
+ * `projectCode` defaults to the signed-in lead's ACTIVE project. The archive
+ * edit page passes an explicit code so a past project's plan can be edited.
+ */
+const ProjectActivitiesTable = ({ projectCode: projectCodeProp }: { projectCode?: number } = {}) => {
+    const activeProjectCode = useSelector((state: RootState) => state.auth.projectCode);
+    const projectCode = projectCodeProp ?? activeProjectCode;
     const [activities, setActivities] = useState<Activity[]>(
         Array.from({ length: 15 }, (_) => ({
             name: "",

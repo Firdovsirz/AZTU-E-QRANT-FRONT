@@ -14,7 +14,16 @@ import { RootState } from '../../redux/store';
 import CircularProgress from '@mui/material/CircularProgress';
 import { setGlobalProjectCode } from '../../redux/slices/authSlice';
 
-export default function ProjectDetails() {
+/**
+ * The project content form.
+ *
+ * By default it edits the signed-in lead's project in the ACTIVE competition.
+ * Passing `archiveProjectCode` switches it to archive mode: it edits that one
+ * archived project instead — only possible after an admin unlocked it, which
+ * the backend re-checks on every read and write.
+ */
+export default function ProjectDetails({ archiveProjectCode }: { archiveProjectCode?: number } = {}) {
+    const isArchiveEdit = archiveProjectCode != null;
     const [projectName, setProjectName] = useState("");
     const [projectGoal, setProjectGoal] = useState("");
     const [projectKeyWords, setProjectKeyWords] = useState("");
@@ -34,40 +43,54 @@ export default function ProjectDetails() {
     const [loading, setLoading] = useState(false);
     const [projectApproved, setProjectApproved] = useState<boolean | null>(null);
     const [submitted, setSubmitted] = useState<boolean | null>(null);
+    const [loadError, setLoadError] = useState<string | null>(null);
     const dispatch = useDispatch();
 
+    // An archived project is only editable because an admin unlocked it, so
+    // `submitted` (always true for a past season) must not freeze the form.
+    const fieldsDisabled = !isArchiveEdit && !!submitted;
+
     useEffect(() => {
-        if (fin_kod) {
-            const getProjectByFinKod = async (finKod: string) => {
-                try {
-                    setLoading(true);
-                    const response = await apiClient.get(`/api/project/${finKod}`);
-                    console.log(response);
-                    setProjectName(response.data.data.project_name);
-                    setProjectGoal(response.data.data.project_purpose);
-                    setProjectAnnotation(response.data.data.project_annotation);
-                    setProjectKeyWords(response.data.data.project_key_words);
-                    setProjectScientificIdea(response.data.data.project_scientific_idea);
-                    setProjectStructure(response.data.data.project_structure);
-                    setProjectCharacterize(response.data.data.team_characterization);
-                    setProjectMonitoring(response.data.data.project_monitoring);
-                    setProjectEvaluation(response.data.data.project_assessment);
-                    setProjectRequirements(response.data.data.project_requirements);
-                    setProjectCode(response.data.data.project_code);
-                    setCollaboratorLimit(response.data.data.collaborator_limit);
-                    setMaxSmetaExpense(response.data.data.max_smeta_amount);
-                    setPrioritet(response.data.data.priotet || "");
-                    setProjectApproved(response.data.data.approved);
-                    setSubmitted(response.data.data.submitted);
-                } catch (error: any) {
-                    console.error('Error fetching project by fin_kod:', error);
-                } finally {
-                    setLoading(false);
+        if (!isArchiveEdit && !fin_kod) return;
+
+        const loadProject = async () => {
+            try {
+                setLoading(true);
+                setLoadError(null);
+                const response = isArchiveEdit
+                    ? await apiClient.get(`/api/archive/project/${archiveProjectCode}`)
+                    : await apiClient.get(`/api/project/${fin_kod}`);
+                setProjectName(response.data.data.project_name);
+                setProjectGoal(response.data.data.project_purpose);
+                setProjectAnnotation(response.data.data.project_annotation);
+                setProjectKeyWords(response.data.data.project_key_words);
+                setProjectScientificIdea(response.data.data.project_scientific_idea);
+                setProjectStructure(response.data.data.project_structure);
+                setProjectCharacterize(response.data.data.team_characterization);
+                setProjectMonitoring(response.data.data.project_monitoring);
+                setProjectEvaluation(response.data.data.project_assessment);
+                setProjectRequirements(response.data.data.project_requirements);
+                setProjectCode(response.data.data.project_code);
+                setCollaboratorLimit(response.data.data.collaborator_limit);
+                setMaxSmetaExpense(response.data.data.max_smeta_amount);
+                setPrioritet(response.data.data.priotet || "");
+                setProjectApproved(response.data.data.approved);
+                setSubmitted(response.data.data.submitted);
+            } catch (error: any) {
+                console.error('Error fetching project:', error);
+                if (isArchiveEdit) {
+                    setLoadError(
+                        error.response?.status === 403
+                            ? 'Bu arxiv layihəsi redaktəyə bağlıdır. Administratora müraciət edin.'
+                            : 'Arxiv layihəsi yüklənə bilmədi.'
+                    );
                 }
-            };
-            getProjectByFinKod(fin_kod);
-        }
-    }, [fin_kod]);
+            } finally {
+                setLoading(false);
+            }
+        };
+        loadProject();
+    }, [fin_kod, archiveProjectCode, isArchiveEdit]);
 
     const handleApprove = async () => {
         if (
@@ -148,6 +171,9 @@ export default function ProjectDetails() {
     async function postProjectField(fieldName: string, fieldValue: string) {
         const payload = {
             fin_kod,
+            // In archive mode the project is addressed explicitly — without it
+            // the backend would target the ACTIVE competition's project.
+            ...(isArchiveEdit ? { project_code: archiveProjectCode } : {}),
             [fieldName]: fieldValue
         };
 
@@ -159,8 +185,11 @@ export default function ProjectDetails() {
             } else {
                 console.log('Success:', response.data?.message);
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error('Network error:', error);
+            if (error.response?.status === 403) {
+                Swal.fire('Xəta!', 'Bu layihə redaktəyə bağlıdır. Administratora müraciət edin.', 'error');
+            }
         }
     };
 
@@ -192,6 +221,13 @@ export default function ProjectDetails() {
         );
     };
 
+    if (loadError) {
+        return (
+            <div className="rounded-2xl border border-error-200 bg-error-50 p-8 text-center text-error-600 dark:border-error-500/30 dark:bg-error-500/10 dark:text-error-400">
+                {loadError}
+            </div>
+        );
+    }
 
     return (
         <div>
@@ -210,7 +246,7 @@ export default function ProjectDetails() {
                             setCollaboratorLimit(value);
                             postProjectField('collaborator_limit', String(value));
                         }}
-                        disabled={!!submitted}
+                        disabled={fieldsDisabled}
                     />
                 </div>
                 <div style={{
@@ -227,7 +263,7 @@ export default function ProjectDetails() {
                             setMaxSmetaExpense(value);
                             postProjectField('max_smeta_amount', String(value));
                         }}
-                        disabled={!!submitted}
+                        disabled={fieldsDisabled}
                     />
                 </div>
             </div>
@@ -245,7 +281,7 @@ export default function ProjectDetails() {
                                 postProjectField('priotet', value || "");
                             }}
                             className='w-[100%]'
-                            disabled={!!submitted}
+                            disabled={fieldsDisabled}
                         />
                     </div>
                 </div>
@@ -263,7 +299,7 @@ export default function ProjectDetails() {
                             }}
                             rows={6}
                             className='w-[100%]'
-                            disabled={!!submitted}
+                            disabled={fieldsDisabled}
                         />
                     </div>
                 </div>
@@ -278,7 +314,7 @@ export default function ProjectDetails() {
                         postProjectField('project_purpose', value)
                     }}
                     rows={6}
-                    disabled={!!submitted}
+                    disabled={fieldsDisabled}
                 />
             </div>
             <div className='mt-[20px]'>
@@ -291,7 +327,7 @@ export default function ProjectDetails() {
                         postProjectField('project_annotation', value)
                     }}
                     rows={6}
-                    disabled={!!submitted}
+                    disabled={fieldsDisabled}
                 />
             </div>
             <div className='mt-[20px]'>
@@ -304,7 +340,7 @@ export default function ProjectDetails() {
                         postProjectField('project_key_words', value)
                     }}
                     rows={6}
-                    disabled={!!submitted}
+                    disabled={fieldsDisabled}
                 />
             </div>
             <div className='mt-[20px]'>
@@ -317,7 +353,7 @@ export default function ProjectDetails() {
                         postProjectField('project_scientific_idea', value)
                     }}
                     rows={6}
-                    disabled={!!submitted}
+                    disabled={fieldsDisabled}
 
                 />
             </div>
@@ -331,7 +367,7 @@ export default function ProjectDetails() {
                         postProjectField('project_structure', value)
                     }}
                     rows={6}
-                    disabled={!!submitted}
+                    disabled={fieldsDisabled}
 
                 />
             </div>
@@ -345,7 +381,7 @@ export default function ProjectDetails() {
                         postProjectField('team_characterization', value)
                     }}
                     rows={6}
-                    disabled={!!submitted}
+                    disabled={fieldsDisabled}
 
                 />
             </div>
@@ -359,7 +395,7 @@ export default function ProjectDetails() {
                         postProjectField('project_monitoring', value)
                     }}
                     rows={6}
-                    disabled={!!submitted}
+                    disabled={fieldsDisabled}
 
                 />
             </div>
@@ -373,7 +409,7 @@ export default function ProjectDetails() {
                         postProjectField('project_assessment', value)
                     }}
                     rows={6}
-                    disabled={!!submitted}
+                    disabled={fieldsDisabled}
 
                 />
             </div>
@@ -387,10 +423,10 @@ export default function ProjectDetails() {
                         postProjectField('project_requirements', value)
                     }}
                     rows={6}
-                    disabled={!!submitted}
+                    disabled={fieldsDisabled}
                 />
             </div>
-            <ProjectFilesUpload projectCode={projectCode} disabled={!!submitted} />
+            <ProjectFilesUpload projectCode={projectCode} disabled={fieldsDisabled} />
             {projectRole === 0 ? (
                 <div className='mt-[20px] flex justify-end items-end'>
                     <Button onClick={handleApprove}>
@@ -398,7 +434,9 @@ export default function ProjectDetails() {
                     </Button>
                 </div>
             ) : null}
-            {projectRole === 0 || projectRole === 2 ? (
+            {/* Re-submitting would rewrite `submitted_at` of a closed season,
+                so the archive form leaves the submission record untouched. */}
+            {!isArchiveEdit && (projectRole === 0 || projectRole === 2) ? (
                 <div className='mt-[20px] flex justify-end items-end'>
                     <Button onClick={handleSubmitProject} disabled={!projectApproved}>
                         Layihəni təqdim et

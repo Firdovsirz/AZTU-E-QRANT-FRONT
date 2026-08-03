@@ -50,6 +50,7 @@ import MessagesPage from "./pages/MessagesPage/MessagesPage";
 import AdminMessagesPage from "./pages/AdminMessagesPage/AdminMessagesPage";
 import ProjectHistoryViewPage from "./pages/ProjectHistoryView/ProjectHistoryViewPage";
 import ProjectsArchivePage from "./pages/ProjectsArchivePage/ProjectsArchivePage";
+import ArchiveProjectEditPage from "./pages/ArchiveProjectEditPage/ArchiveProjectEditPage";
 import MyHistoryPage from "./pages/MyHistoryPage/MyHistoryPage";
 
 export default function App() {
@@ -139,6 +140,8 @@ function AppWithRouterWrapper() {
             <Route path="/messages-admin" element={<AdminMessagesPage />} />
             <Route path="/project-history/:projectCode" element={<ProjectHistoryViewPage />} />
             <Route path="/projects/archive" element={<ProjectsArchivePage />} />
+            {/* Not behind the smeta `lock`: access is granted per project by an admin. */}
+            <Route path="/archive/project/:projectCode/edit" element={<ArchiveProjectEditPage />} />
             <Route path="/my-history" element={<MyHistoryPage />} />
           </Route>
         ) : (
