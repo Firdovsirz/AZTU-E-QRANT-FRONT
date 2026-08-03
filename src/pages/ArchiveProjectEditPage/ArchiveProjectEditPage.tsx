@@ -7,6 +7,7 @@ import Badge from "../../components/ui/badge/Badge";
 import Collaborators from "../../components/collaborators/Collaborators";
 import ProjectDetails from "../../components/ProjectDetails/ProjectDetails";
 import ProjectActivitiesTable from "../../components/ProjectActivities/ProjectActivities";
+import QuarterlyReportPanel from "../../components/QuarterlyReport/QuarterlyReportPanel";
 import LockOpenIcon from "@mui/icons-material/LockOpen";
 import CircularProgress from "@mui/material/CircularProgress";
 
@@ -103,6 +104,11 @@ export default function ArchiveProjectEditPage() {
                         Layihənin komandası
                     </h1>
                     <Collaborators projectCode={code} />
+
+                    <h1 className="mb-2 mt-[30px] font-semibold text-gray-800 text-title-l dark:text-white/90 sm:text-title-s">
+                        Rüblük Elmi-Texniki Hesabat
+                    </h1>
+                    <QuarterlyReportPanel projectCode={code} defaultYear={project?.competition_year} />
                 </>
             )}
         </div>
