@@ -31,6 +31,18 @@ export default function ResetPassword() {
           title: "Yanlış fin kod",
           text: "Zəhmət olmasa fin kodun doğruluğundan əmin olun."
         });
+      } else if (res === "NO EMAIL") {
+        Swal.fire({
+          icon: "error",
+          title: "E-poçt ünvanı tapılmadı",
+          text: "Hesabınıza e-poçt ünvanı bağlanmayıb. Administratora müraciət edin."
+        });
+      } else if (res === "MAIL FAILED") {
+        Swal.fire({
+          icon: "error",
+          title: "OTP göndərilə bilmədi",
+          text: "E-poçt xidmətində problem var. Zəhmət olmasa bir az sonra yenidən cəhd edin və ya administratora müraciət edin."
+        });
       } else {
         Swal.fire({
           icon: "error",

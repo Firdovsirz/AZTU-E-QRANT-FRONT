@@ -1,13 +1,20 @@
 import apiClient from "../../util/apiClient";
 
-export const sendOtp = async (fin_kod: string) => {
-    const response = await apiClient.post(`/auth/send-otp/${fin_kod}`);
+export type SendOtpResult = "SUCCESS" | "NOT FOUND" | "NO EMAIL" | "MAIL FAILED" | "ERROR";
 
-    if (response.data.status === 200) {
-        return "SUCCESS";
-    } else if (response.data.status === 404) {
-        return "NOT FOUND";
-    } else {
+export const sendOtp = async (fin_kod: string): Promise<SendOtpResult> => {
+    // axios rejects on every non-2xx, so the failure cases must be read from
+    // the thrown error — testing `response.data.status` alone never sees them.
+    try {
+        const response = await apiClient.post(`/auth/send-otp/${fin_kod}`);
+        return response.data?.status === 200 ? "SUCCESS" : "ERROR";
+    } catch (err: any) {
+        const status = err?.response?.status;
+        if (status === 404) return "NOT FOUND";
+        if (status === 422) return "NO EMAIL";
+        // 502: the OTP was generated but the mail could not be delivered.
+        if (status === 502) return "MAIL FAILED";
+        console.error("Send OTP error:", err);
         return "ERROR";
     }
 }
