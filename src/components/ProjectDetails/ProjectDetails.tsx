@@ -118,11 +118,13 @@ export default function ProjectDetails({ archiveProjectCode }: { archiveProjectC
         try {
             const response = await apiClient.post('/api/approve_project', {
                 fin_kod,
-                project_code: projectCode
+                // Omit rather than send "" — the backend then resolves this
+                // user's project in the active competition.
+                ...(projectCode ? { project_code: projectCode } : {})
             });
 
             if (response.status === 200) {
-                dispatch(setGlobalProjectCode(+projectCode));
+                if (projectCode) dispatch(setGlobalProjectCode(+projectCode));
                 Swal.fire('Uğur!', 'Layihə uğurla təsdiqləndi.', 'success');
             }
         } catch (error: any) {
@@ -183,7 +185,14 @@ export default function ProjectDetails({ archiveProjectCode }: { archiveProjectC
             if (response.status !== 200) {
                 console.error('Error:', response.data?.error || response.data?.message);
             } else {
-                console.log('Success:', response.data?.message);
+                // The first save of a brand-new proposal is what creates the
+                // row, so this is where the form learns its project_code —
+                // without it "Təsdiq et" would submit an empty code.
+                const savedCode = response.data?.project_code;
+                if (savedCode && !projectCode) {
+                    setProjectCode(savedCode);
+                    if (!isArchiveEdit) dispatch(setGlobalProjectCode(+savedCode));
+                }
             }
         } catch (error: any) {
             console.error('Network error:', error);
