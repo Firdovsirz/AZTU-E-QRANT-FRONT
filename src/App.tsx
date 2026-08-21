@@ -52,6 +52,7 @@ import ProjectHistoryViewPage from "./pages/ProjectHistoryView/ProjectHistoryVie
 import ProjectsArchivePage from "./pages/ProjectsArchivePage/ProjectsArchivePage";
 import ArchiveProjectEditPage from "./pages/ArchiveProjectEditPage/ArchiveProjectEditPage";
 import MyHistoryPage from "./pages/MyHistoryPage/MyHistoryPage";
+import AdminProjectEditPage from "./pages/AdminProjectEditPage/AdminProjectEditPage";
 
 export default function App() {
   return (
@@ -142,6 +143,8 @@ function AppWithRouterWrapper() {
             <Route path="/projects/archive" element={<ProjectsArchivePage />} />
             {/* Not behind the smeta `lock`: access is granted per project by an admin. */}
             <Route path="/archive/project/:projectCode/edit" element={<ArchiveProjectEditPage />} />
+            {/* Admin-only surface; the backend refuses the writes for anyone else. */}
+            <Route path="/admin/project/:projectCode/edit" element={<AdminProjectEditPage />} />
             <Route path="/my-history" element={<MyHistoryPage />} />
           </Route>
         ) : (

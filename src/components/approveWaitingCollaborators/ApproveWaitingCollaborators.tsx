@@ -35,41 +35,62 @@ export default function ApproveWaitingUsers() {
         const fetchCollaborators = async () => {
             try {
                 const response = await apiClient.get(`/api/app-wait-collaborators/${projectCode}`);
-                setCollaborators(response.data.data);
-            } catch (error) {
-                console.error("Failed to fetch collaborators:", error);
+                setCollaborators(response.data.data ?? []);
+            } catch (error: any) {
+                // 404 just means nobody is waiting.
+                if (error.response?.status !== 404) {
+                    console.error("Failed to fetch collaborators:", error);
+                }
+                setCollaborators([]);
             }
         };
         fetchCollaborators();
-    }, []);
+    }, [projectCode]);
+
+    // The applicant is identified by FIN alone, so the project has to travel
+    // with the call — otherwise the backend has to guess which of the person's
+    // applications is meant.
+    const scoped = (path: string) =>
+        projectCode ? `${path}?project_code=${projectCode}` : path;
 
     const handleApprove = async (finKod: string) => {
         try {
-            const response = await apiClient.post(`/api/app-collaborator/${finKod}`);
-
-            if (response.data.status === 200) {
-                Swal.fire("Uğurla təsdiqləndi!", "", "success");
-            } else {
-                Swal.fire("Xəta baş verdi!", "Təsdiqləmə mümkün olmadı", "error");
-            }
-        } catch (error) {
+            await apiClient.post(scoped(`/api/app-collaborator/${finKod}`));
+            setCollaborators((prev) => prev.filter((c) => c.fin_kod !== finKod));
+            Swal.fire("Uğurla təsdiqləndi!", "", "success");
+        } catch (error: any) {
             console.error("Error during approval:", error);
-            Swal.fire("Xəta baş verdi!", "Serverə qoşulmaq mümkün olmadı", "error");
+            Swal.fire(
+                "Xəta baş verdi!",
+                error.response?.data?.error ?? "Təsdiqləmə mümkün olmadı",
+                "error"
+            );
         }
     };
 
     const handleReject = async (finKod: string) => {
-        try {
-            const response = await apiClient.delete(`/api/reject-collaborator/${finKod}`);
+        const confirmation = await Swal.fire({
+            title: "Müraciət ləğv edilsin?",
+            text: "İstifadəçi bu layihəyə qəbul edilməyəcək və başqa layihəyə müraciət edə biləcək.",
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonText: "Bəli, ləğv et",
+            cancelButtonText: "Xeyr",
+            confirmButtonColor: "#d33",
+        });
+        if (!confirmation.isConfirmed) return;
 
-            if (response.data.status === 200) {
-                Swal.fire("Uğurla ləğv edildi!", "", "success");
-            } else {
-                Swal.fire("Xəta baş verdi!", "Təsdiqləmə mümkün olmadı", "error");
-            }
-        } catch (error) {
-            console.error("Error during approval:", error);
-            Swal.fire("Xəta baş verdi!", "Serverə qoşulmaq mümkün olmadı", "error");
+        try {
+            await apiClient.delete(scoped(`/api/reject-collaborator/${finKod}`));
+            setCollaborators((prev) => prev.filter((c) => c.fin_kod !== finKod));
+            Swal.fire("Uğurla ləğv edildi!", "", "success");
+        } catch (error: any) {
+            console.error("Error during rejection:", error);
+            Swal.fire(
+                "Xəta baş verdi!",
+                error.response?.data?.error ?? "Ləğv etmək mümkün olmadı",
+                "error"
+            );
         };
     };
 

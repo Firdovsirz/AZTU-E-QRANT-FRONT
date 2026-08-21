@@ -19,11 +19,21 @@ import { setGlobalProjectCode } from '../../redux/slices/authSlice';
  *
  * By default it edits the signed-in lead's project in the ACTIVE competition.
  * Passing `archiveProjectCode` switches it to archive mode: it edits that one
- * archived project instead — only possible after an admin unlocked it, which
- * the backend re-checks on every read and write.
+ * archived project instead — only possible after an admin unlocked it.
+ * Passing `adminProjectCode` targets any single project of the active
+ * competition, which is how an admin edits somebody else's proposal.
+ *
+ * Both are "targeted" modes: the form addresses one project explicitly instead
+ * of resolving the caller's own. The backend re-checks the permission on every
+ * read and write.
  */
-export default function ProjectDetails({ archiveProjectCode }: { archiveProjectCode?: number } = {}) {
+export default function ProjectDetails(
+    { archiveProjectCode, adminProjectCode }: { archiveProjectCode?: number; adminProjectCode?: number } = {}
+) {
     const isArchiveEdit = archiveProjectCode != null;
+    const isAdminEdit = adminProjectCode != null;
+    const targetProjectCode = archiveProjectCode ?? adminProjectCode;
+    const isTargetedEdit = targetProjectCode != null;
     const [projectName, setProjectName] = useState("");
     const [projectGoal, setProjectGoal] = useState("");
     const [projectKeyWords, setProjectKeyWords] = useState("");
@@ -35,6 +45,10 @@ export default function ProjectDetails({ archiveProjectCode }: { archiveProjectC
     const [projectRequirements, setProjectRequirements] = useState("");
     const [projectScientificIdea, setProjectScientificIdea] = useState("");
     const [projectCode, setProjectCode] = useState("");
+    // In a targeted edit the row belongs to somebody else, so writes must name
+    // ITS owner — sending the signed-in admin's FIN would fail the checks that
+    // read the profile behind the submitted fin_kod.
+    const [ownerFinKod, setOwnerFinKod] = useState<string | null>(null);
     const [prioritet, setPrioritet] = useState("");
     const [collaboratorLimit, setCollaboratorLimit] = useState<number | null>(7);
     const [maxSmetaExpense, setMaxSmetaExpense] = useState<number | null>(200000);
@@ -46,12 +60,12 @@ export default function ProjectDetails({ archiveProjectCode }: { archiveProjectC
     const [loadError, setLoadError] = useState<string | null>(null);
     const dispatch = useDispatch();
 
-    // An archived project is only editable because an admin unlocked it, so
-    // `submitted` (always true for a past season) must not freeze the form.
-    const fieldsDisabled = !isArchiveEdit && !!submitted;
+    // A targeted edit is deliberate — an unlocked archive project, or an admin
+    // correcting a live proposal — so `submitted` must not freeze the form.
+    const fieldsDisabled = !isTargetedEdit && !!submitted;
 
     useEffect(() => {
-        if (!isArchiveEdit && !fin_kod) return;
+        if (!isTargetedEdit && !fin_kod) return;
 
         const loadProject = async () => {
             try {
@@ -59,7 +73,9 @@ export default function ProjectDetails({ archiveProjectCode }: { archiveProjectC
                 setLoadError(null);
                 const response = isArchiveEdit
                     ? await apiClient.get(`/api/archive/project/${archiveProjectCode}`)
-                    : await apiClient.get(`/api/project/${fin_kod}`);
+                    : isAdminEdit
+                        ? await apiClient.get(`/api/project/${adminProjectCode}`)
+                        : await apiClient.get(`/api/project/${fin_kod}`);
                 setProjectName(response.data.data.project_name);
                 setProjectGoal(response.data.data.project_purpose);
                 setProjectAnnotation(response.data.data.project_annotation);
@@ -71,6 +87,7 @@ export default function ProjectDetails({ archiveProjectCode }: { archiveProjectC
                 setProjectEvaluation(response.data.data.project_assessment);
                 setProjectRequirements(response.data.data.project_requirements);
                 setProjectCode(response.data.data.project_code);
+                setOwnerFinKod(response.data.data.fin_kod ?? null);
                 setCollaboratorLimit(response.data.data.collaborator_limit);
                 setMaxSmetaExpense(response.data.data.max_smeta_amount);
                 setPrioritet(response.data.data.priotet || "");
@@ -84,13 +101,19 @@ export default function ProjectDetails({ archiveProjectCode }: { archiveProjectC
                             ? 'Bu arxiv layihəsi redaktəyə bağlıdır. Administratora müraciət edin.'
                             : 'Arxiv layihəsi yüklənə bilmədi.'
                     );
+                } else if (isAdminEdit) {
+                    setLoadError(
+                        error.response?.status === 403
+                            ? 'Bu layihəni redaktə etmək icazəniz yoxdur.'
+                            : 'Layihə yüklənə bilmədi.'
+                    );
                 }
             } finally {
                 setLoading(false);
             }
         };
         loadProject();
-    }, [fin_kod, archiveProjectCode, isArchiveEdit]);
+    }, [fin_kod, archiveProjectCode, adminProjectCode, isArchiveEdit, isAdminEdit, isTargetedEdit]);
 
     const handleApprove = async () => {
         if (
@@ -117,7 +140,7 @@ export default function ProjectDetails({ archiveProjectCode }: { archiveProjectC
 
         try {
             const response = await apiClient.post('/api/approve_project', {
-                fin_kod,
+                fin_kod: ownerFinKod ?? fin_kod,
                 // Omit rather than send "" — the backend then resolves this
                 // user's project in the active competition.
                 ...(projectCode ? { project_code: projectCode } : {})
@@ -172,10 +195,10 @@ export default function ProjectDetails({ archiveProjectCode }: { archiveProjectC
 
     async function postProjectField(fieldName: string, fieldValue: string) {
         const payload = {
-            fin_kod,
-            // In archive mode the project is addressed explicitly — without it
-            // the backend would target the ACTIVE competition's project.
-            ...(isArchiveEdit ? { project_code: archiveProjectCode } : {}),
+            fin_kod: isTargetedEdit ? (ownerFinKod ?? fin_kod) : fin_kod,
+            // In a targeted edit the project is addressed explicitly — without
+            // it the backend would target the caller's own project instead.
+            ...(isTargetedEdit ? { project_code: targetProjectCode } : {}),
             [fieldName]: fieldValue
         };
 
@@ -191,7 +214,7 @@ export default function ProjectDetails({ archiveProjectCode }: { archiveProjectC
                 const savedCode = response.data?.project_code;
                 if (savedCode && !projectCode) {
                     setProjectCode(savedCode);
-                    if (!isArchiveEdit) dispatch(setGlobalProjectCode(+savedCode));
+                    if (!isTargetedEdit) dispatch(setGlobalProjectCode(+savedCode));
                 }
             }
         } catch (error: any) {
@@ -443,9 +466,9 @@ export default function ProjectDetails({ archiveProjectCode }: { archiveProjectC
                     </Button>
                 </div>
             ) : null}
-            {/* Re-submitting would rewrite `submitted_at` of a closed season,
-                so the archive form leaves the submission record untouched. */}
-            {!isArchiveEdit && (projectRole === 0 || projectRole === 2) ? (
+            {/* Re-submitting would rewrite a `submitted_at` that is not the
+                caller's to change, so targeted edits leave it untouched. */}
+            {!isTargetedEdit && (projectRole === 0 || projectRole === 2) ? (
                 <div className='mt-[20px] flex justify-end items-end'>
                     <Button onClick={handleSubmitProject} disabled={!projectApproved}>
                         Layihəni təqdim et

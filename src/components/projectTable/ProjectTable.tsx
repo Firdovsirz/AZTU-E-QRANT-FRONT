@@ -13,6 +13,8 @@ import { useEffect, useState } from "react";
 import apiClient from "../../util/apiClient";
 import { RootState } from "../../redux/store";
 import ReadMore from "../ui/ReadMore";
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import CircularProgress from '@mui/material/CircularProgress';
@@ -24,6 +26,7 @@ export default function ProjectTable() {
     const [loading, setLoading] = useState(true);
     const [projects, setProjects] = useState<any[]>([]);
     const [winnerLoading, setWinnerLoading] = useState<number | null>(null);
+    const [deletingCode, setDeletingCode] = useState<number | null>(null);
     const fin_kod = useSelector((state: RootState) => state.auth.fin_kod);
     const projectRole = useSelector((state: RootState) => state.auth.projectRole);
     const isCollaborator = useSelector((state: RootState) => state.auth.isCollaborator);
@@ -41,6 +44,23 @@ export default function ProjectTable() {
         };
         fetchProjects();
     }, []);
+
+    // `isCollaborator` is cached at sign-in. Someone removed from a team since
+    // then would still see "İştirakçı Ol" disabled and could never re-apply
+    // without logging out, so re-read the truth whenever this list opens.
+    useEffect(() => {
+        if (projectRole !== 1) return;
+
+        const refreshCollaboratorStatus = async () => {
+            try {
+                const response = await apiClient.get('/api/my-collaborator-status');
+                disptach(setGlobalIsCollaborator(!!response.data?.data?.is_collaborator));
+            } catch (error) {
+                console.error("Failed to refresh collaborator status:", error);
+            }
+        };
+        refreshCollaboratorStatus();
+    }, [projectRole, disptach]);
 
     const handleBeCollaborator = async (fin_kod: string, project_code: string) => {
     const result = await Swal.fire({
@@ -143,6 +163,38 @@ export default function ProjectTable() {
         }
     };
 
+    const handleDeleteProject = async (project: any) => {
+        const confirmation = await Swal.fire({
+            title: 'Layihə silinsin?',
+            html:
+                `<b>${project.project_name || 'Adsız layihə'}</b> layihəsi tamamilə silinəcək.<br/><br/>` +
+                'Layihənin bütün icraçıları komandadan çıxarılacaq və onlar başqa ' +
+                'layihələrə müraciət edə biləcəklər. Bu əməliyyat geri qaytarıla bilməz.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Bəli, sil',
+            cancelButtonText: 'Xeyr',
+            confirmButtonColor: '#d33'
+        });
+        if (!confirmation.isConfirmed) return;
+
+        try {
+            setDeletingCode(project.project_code);
+            await apiClient.delete('/api/delete/project', {
+                // The owner's FIN identifies whose project this is; the backend
+                // authorises the delete from the TOKEN, not from this field.
+                data: { fin_kod: project.fin_kod, project_code: project.project_code }
+            });
+            setProjects(prev => prev.filter(p => p.project_code !== project.project_code));
+            Swal.fire('Silindi!', 'Layihə uğurla silindi.', 'success');
+        } catch (error: any) {
+            console.error("Failed to delete project:", error);
+            Swal.fire('Xəta!', error.response?.data?.error ?? 'Layihəni silmək mümkün olmadı.', 'error');
+        } finally {
+            setDeletingCode(null);
+        }
+    };
+
     if (loading) {
         return (
             <div className="w-full h-[300px] flex items-center justify-center">
@@ -151,7 +203,7 @@ export default function ProjectTable() {
         );
     };
 
-    const emptyColSpan = projectRole === 2 ? 7 : projectRole === 1 ? 5 : 4;
+    const emptyColSpan = projectRole === 2 ? 9 : projectRole === 1 ? 5 : 4;
 
     return (
         <>
@@ -185,12 +237,17 @@ export default function ProjectTable() {
                                 >
                                     Layihə statusu
                                 </TableCell>
-                                {/* <TableCell
-                                    isHeader
-                                    className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
-                                >
-                                    Baxış
-                                </TableCell> */}
+                                {/* The admin body row renders a "view" link here, so the
+                                    header has to exist too or every later column is
+                                    labelled by its neighbour. */}
+                                {projectRole === 2 ? (
+                                    <TableCell
+                                        isHeader
+                                        className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
+                                    >
+                                        Baxış
+                                    </TableCell>
+                                ) : null}
                                 {projectRole === 1 ? (
                                     <TableCell
                                         isHeader
@@ -213,6 +270,22 @@ export default function ProjectTable() {
                                         className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
                                     >
                                         Qalib
+                                    </TableCell>
+                                ) : null}
+                                {projectRole === 2 ? (
+                                    <TableCell
+                                        isHeader
+                                        className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
+                                    >
+                                        Redaktə
+                                    </TableCell>
+                                ) : null}
+                                {projectRole === 2 ? (
+                                    <TableCell
+                                        isHeader
+                                        className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
+                                    >
+                                        Sil
                                     </TableCell>
                                 ) : null}
                             </TableRow>
@@ -298,6 +371,33 @@ export default function ProjectTable() {
                                                         <EmojiEventsIcon style={{ width: 16, height: 16 }} />
                                                         {project.winner ? "Qalib" : "Qalib et"}
                                                     </>
+                                                )}
+                                            </button>
+                                        </TableCell>
+                                    ) : null}
+                                    {projectRole === 2 ? (
+                                        <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                                            <Link to={`/admin/project/${project.project_code}/edit`} title="Layihəni redaktə et">
+                                                <EditIcon
+                                                    style={{ width: 35, height: 35 }}
+                                                    className="cursor-pointer bg-brand-50 text-brand-600 rounded p-1 hover:bg-brand-100 dark:bg-brand-900/40 dark:text-brand-300 dark:hover:bg-brand-800/60 transition-colors duration-200"
+                                                />
+                                            </Link>
+                                        </TableCell>
+                                    ) : null}
+                                    {projectRole === 2 ? (
+                                        <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                                            <button
+                                                type="button"
+                                                title="Layihəni sil"
+                                                onClick={() => handleDeleteProject(project)}
+                                                disabled={deletingCode === project.project_code}
+                                                className="inline-flex h-[35px] w-[35px] items-center justify-center rounded bg-error-50 text-error-600 transition-colors hover:bg-error-100 disabled:opacity-60 dark:bg-error-500/15 dark:text-error-400 dark:hover:bg-error-500/25"
+                                            >
+                                                {deletingCode === project.project_code ? (
+                                                    <CircularProgress size={16} color="inherit" />
+                                                ) : (
+                                                    <DeleteIcon style={{ width: 22, height: 22 }} />
                                                 )}
                                             </button>
                                         </TableCell>
