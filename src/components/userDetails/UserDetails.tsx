@@ -19,6 +19,88 @@ import { isCompleteIdNumber } from "../../util/idNumber";
 import CircularProgress from "@mui/material/CircularProgress";
 import { setGlobalProfilCompleted } from "../../redux/slices/authSlice";
 
+/**
+ * Field order and wording for the profile form.
+ *
+ * `REQUIRED_FIELDS` mirrors what `POST /api/approve/profile` insists on, so a
+ * form that passes here is not bounced by the server with an unhelpful
+ * "Missing field". The fields the server wants that the user never types —
+ * work_location (from their role), work_email and the work/home phones (copies
+ * of the personal ones) — are filled in automatically and left out.
+ */
+const REQUIRED_FIELDS = [
+    "born_date", "personal_id_number", "sex", "born_place", "living_location",
+    "citizenship", "work_place", "department", "duty", "main_education",
+    "additonal_education", "scientific_degree", "scientific_date",
+    "scientific_name", "scientific_name_date",
+    "personal_mobile_number", "personal_email",
+] as const;
+
+const FIELD_LABELS: Record<string, string> = {
+    name: "Ad",
+    surname: "Soyad",
+    father_name: "Ata adı",
+    born_date: "Doğum tarixi",
+    born_place: "Doğum yeri",
+    personal_id_number: "Şəxsiyyət vəsiqəsinin seriyası",
+    sex: "Cinsiyyət",
+    living_location: "Yaşayış yeri",
+    citizenship: "Vətəndaşlıq",
+    work_place: "İş yeri",
+    department: "Şöbə",
+    duty: "Vəzifə",
+    main_education: "Ali təhsil",
+    additonal_education: "Əlavə ali təhsil",
+    scientific_degree: "Elmi dərəcə",
+    scientific_date: "Elmi dərəcənin tarixi",
+    scientific_name: "Elmi ad",
+    scientific_name_date: "Elmi adın verilmə tarixi",
+    personal_mobile_number: "Əlaqə nömrəsi",
+    personal_email: "Epoçt ünvanı",
+    image: "Profil şəkli",
+};
+
+/** One titled block of related fields, laid out on a shared grid. */
+function FormSection({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
+    return (
+        <section className="rounded-2xl border border-gray-200/70 bg-white/80 p-5 shadow-theme-sm backdrop-blur-sm dark:border-white/[0.06] dark:bg-gray-900/40 sm:p-6">
+            <div className="mb-5 border-b border-gray-100 pb-3 dark:border-white/[0.06]">
+                <h3 className="text-base font-bold tracking-tight text-gray-800 dark:text-white/90">{title}</h3>
+                {hint ? <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">{hint}</p> : null}
+            </div>
+            <div className="grid grid-cols-1 gap-x-5 gap-y-5 sm:grid-cols-2 xl:grid-cols-3">{children}</div>
+        </section>
+    );
+}
+
+/** A labelled slot on the section grid, able to show why it was rejected. */
+function Field({
+    name, label, required = false, error = false, errorText, wide = false, children,
+}: {
+    name: string;
+    label: string;
+    required?: boolean;
+    error?: boolean;
+    errorText?: string;
+    wide?: boolean;
+    children: React.ReactNode;
+}) {
+    return (
+        <div id={`field-${name}`} className={wide ? "sm:col-span-2" : undefined}>
+            <Label>
+                {label}
+                {required ? <span className="ml-0.5 text-error-500">*</span> : null}
+            </Label>
+            {children}
+            {error ? (
+                <p className="mt-1 text-xs font-medium text-error-500">
+                    {errorText ?? "Bu sahə doldurulmalıdır"}
+                </p>
+            ) : null}
+        </div>
+    );
+}
+
 interface UserDetailsFormData {
     name: string;
     surname: string;
@@ -88,19 +170,30 @@ export default function UserDetails({ fin_kod }: { fin_kod: string | undefined |
         personal_email: "",
         work_email: "",
     });
+    // Which fields the last submit attempt rejected, so the form can point at
+    // them instead of only listing names in a dialog.
+    const [invalidFields, setInvalidFields] = useState<string[]>([]);
+    const isInvalid = (field: string) => invalidFields.includes(field);
+    const clearInvalid = (field: string) =>
+        setInvalidFields(prev => prev.filter(f => f !== field));
+
     const handleSelectChange = (value: string) => {
         setFormData({
             ...formData,
             sex: value,
         });
+        clearInvalid("sex");
     };
     const handlePersonalPhoneNumberChange = (phoneNumber: string) => {
+        // The profile carries three numbers but only asks for one; the work and
+        // home fields are copies so the server's required-field check passes.
         setFormData({
             ...formData,
             personal_mobile_number: phoneNumber,
             home_phone: phoneNumber,
             work_phone: phoneNumber
         });
+        clearInvalid("personal_mobile_number");
     };
 
 
@@ -111,57 +204,61 @@ export default function UserDetails({ fin_kod }: { fin_kod: string | undefined |
             ...formData,
             [e.target.name]: e.target.value,
         });
+        clearInvalid(e.target.name);
+    };
+
+    /** Set a field the plain input handler cannot reach (pickers, composites). */
+    const setField = (field: keyof UserDetailsFormData, value: string) => {
+        setFormData(prev => ({ ...prev, [field]: value }));
+        clearInvalid(field);
     };
 
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
             setImage(file);
+            clearInvalid("image");
         }
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-
-        console.log('FormData values:', formData);
-
-        const requiredFields: (keyof UserDetailsFormData)[] = [
-            "personal_id_number", "sex", "born_place",
-            "living_location", "citizenship", "work_place", "department", "duty", "main_education",
-            "additonal_education", "scientific_degree", "scientific_name",
-            "scientific_name_date",
-            "personal_email", "born_date"
-        ];
-
-        const emptyFields = requiredFields.filter(field => {
+    /** Required fields still empty, in form order, plus the missing picture. */
+    const missingFields = () => {
+        const missing: string[] = REQUIRED_FIELDS.filter(field => {
             const value = formData[field];
             return !value || value.toString().trim() === "";
         });
 
-        // A series on its own ("AZE" with no number) passes the empty check
-        // above, so the document number is validated on its own terms.
-        if (emptyFields.length === 0 && !isCompleteIdNumber(formData.personal_id_number)) {
-            Swal.fire({
-                icon: "warning",
-                title: "Şəxsiyyət vəsiqəsinin seriyası tam deyil",
-                text: "Seriyanı seçin və nömrəni tam daxil edin.",
-                confirmButtonText: "Bağla"
-            });
-            return;
+        // A series with no number ("AZE") is not empty but is not usable either.
+        if (!missing.includes("personal_id_number")
+            && !isCompleteIdNumber(formData.personal_id_number)) {
+            missing.push("personal_id_number");
         }
 
-        if (emptyFields.length > 0 || !image) {
-            const formattedFieldNames = emptyFields
-                .map(field => `• ${field.replace(/_/g, " ")}`)
-                .join("<br>");
+        if (!image) missing.push("image");
+        return missing;
+    };
 
-            const imageWarning = !image ? "<br>• şəkil" : "";
+    const filledCount = REQUIRED_FIELDS.length + 1 - missingFields().length;
+    const totalCount = REQUIRED_FIELDS.length + 1;
 
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        const missing = missingFields();
+        setInvalidFields(missing);
+
+        if (missing.length > 0) {
             Swal.fire({
                 icon: "warning",
                 title: "Aşağıdakı sahələr doldurulmalıdır:",
-                html: formattedFieldNames + imageWarning,
+                html: missing.map(field => `• ${FIELD_LABELS[field] ?? field}`).join("<br>"),
                 confirmButtonText: "Bağla"
+            }).then(() => {
+                // Land the user on the first thing to fix rather than making
+                // them hunt for it in a form this long.
+                document
+                    .getElementById(`field-${missing[0]}`)
+                    ?.scrollIntoView({ behavior: "smooth", block: "center" });
             });
 
             return;
@@ -739,39 +836,52 @@ export default function UserDetails({ fin_kod }: { fin_kod: string | undefined |
                 </>
             ) : (
                 <>
-                    <div className="w-[100%] flex flex-col justify-center items-center p-[50px]">
-                        <h1 className="text-[20px] text-center text-gray-400 dark:text-white/60 mb-10 mt-10">
-                            Digər səhifələrə giriş icazəsi üçün bütün məlumatları doldurun və təsdiq edin!
-                        </h1>
-                        <form action="" onSubmit={(e) => handleSubmit(e)}>
-                            <div className="grid grid-cols-1 gap-x-4 gap-y-5 lg:grid-cols-3">
-                                <div className="col-span-2 lg:col-span-1">
-                                    <Label>Ad</Label>
+                    <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6">
+                        <div className="mb-6 rounded-2xl border border-brand-200/70 bg-brand-50/60 p-5 dark:border-brand-500/20 dark:bg-brand-500/10">
+                            <h1 className="text-base font-bold tracking-tight text-brand-900 dark:text-brand-100 sm:text-lg">
+                                Şəxsi məlumatlarınızı tamamlayın
+                            </h1>
+                            <p className="mt-1 text-sm text-brand-800/80 dark:text-brand-200/80">
+                                Digər səhifələrə giriş üçün <span className="font-semibold">*</span> ilə işarələnmiş
+                                bütün sahələri doldurun və təsdiq edin.
+                            </p>
+
+                            {/* A long form is easier to face when you can see how much is left. */}
+                            <div className="mt-4 flex items-center gap-3">
+                                <div className="h-2 flex-1 overflow-hidden rounded-full bg-white/70 dark:bg-white/10">
+                                    <div
+                                        className="h-full rounded-full bg-gradient-to-r from-brand-500 to-purple-500 transition-all duration-500"
+                                        style={{ width: `${Math.round((filledCount / totalCount) * 100)}%` }}
+                                    />
+                                </div>
+                                <span className="shrink-0 text-xs font-semibold text-brand-800 dark:text-brand-200">
+                                    {filledCount}/{totalCount}
+                                </span>
+                            </div>
+                        </div>
+
+                        <form action="" onSubmit={(e) => handleSubmit(e)} className="flex flex-col gap-6">
+                            <FormSection
+                                title="Şəxsi məlumatlar"
+                                hint="Ad, soyad və FIN kod hesabınızdan gəlir və dəyişdirilə bilməz."
+                            >
+                                <Field name="name" label="Ad" required>
                                     {user?.name ? (
+                                        <Input type="text" name="name" value={user.name} readOnly disabled />
+                                    ) : (
                                         <Input
                                             type="text"
                                             name="name"
-                                            value={user?.name}
-                                            readOnly
+                                            value={formData.name}
+                                            onChange={handleChange}
+                                            required
                                         />
-                                    ) : <Input
-                                        type="text"
-                                        name="name"
-                                        value={formData.name}
-                                        onChange={handleChange}
-                                        required
-                                    />}
-                                </div>
+                                    )}
+                                </Field>
 
-                                <div className="col-span-2 lg:col-span-1">
-                                    <Label>Soyad</Label>
+                                <Field name="surname" label="Soyad" required>
                                     {user?.surname ? (
-                                        <Input
-                                            type="text"
-                                            name="surname"
-                                            value={user?.surname}
-                                            readOnly
-                                        />
+                                        <Input type="text" name="surname" value={user.surname} readOnly disabled />
                                     ) : (
                                         <Input
                                             type="text"
@@ -781,257 +891,282 @@ export default function UserDetails({ fin_kod }: { fin_kod: string | undefined |
                                             required
                                         />
                                     )}
-                                </div>
+                                </Field>
 
-                                <div className="col-span-2 lg:col-span-1">
-                                    <Label>Ata adı</Label>
+                                <Field name="father_name" label="Ata adı" required>
                                     {user?.father_name ? (
-                                        <Input
-                                            type="text"
-                                            name="father_name"
-                                            value={user?.father_name}
-                                            readOnly
-                                        />
+                                        <Input type="text" name="father_name" value={user.father_name} readOnly disabled />
                                     ) : (
                                         <Input
                                             type="text"
                                             name="father_name"
                                             value={formData.father_name}
-                                            required
                                             onChange={handleChange}
+                                            required
                                         />
                                     )}
-                                </div>
+                                </Field>
 
-                                <div className="col-span-2 lg:col-span-1">
-                                    <Label>Fin kod</Label>
-                                    <Input
-                                        type="text"
-                                        name="fin_kod"
-                                        value={formData.fin_kod}
-                                        required
-                                    />
-                                </div>
-                                <div className="col-span-2 lg:col-span-1">
-                                    <Label>Doğum tarixi</Label>
+                                <Field name="fin_kod" label="FIN kod">
+                                    <Input type="text" name="fin_kod" value={formData.fin_kod} readOnly disabled />
+                                </Field>
+
+                                <Field name="born_date" label="Doğum tarixi" required error={isInvalid("born_date")}>
                                     <DatePicker
                                         id="birth-date-picker"
                                         value={formData.born_date}
                                         placeholder="Tarix seçin"
-                                        onChange={(dates, currentDateString) => {
-                                            console.log(dates);
-
-                                            setFormData(prev => ({
-                                                ...prev,
-                                                born_date: currentDateString
-                                            }));
-                                        }}
+                                        onChange={(_dates, currentDateString) => setField("born_date", currentDateString)}
                                     />
-                                </div>
+                                </Field>
 
-                                <div className="col-span-2 lg:col-span-1">
-                                    <Label>Şəxsiyyət vəsiqəsinin seriyası</Label>
-                                    <IdSeriesInput
-                                        required
-                                        value={formData.personal_id_number}
-                                        onChange={(value) =>
-                                            setFormData(prev => ({ ...prev, personal_id_number: value }))
-                                        }
-                                    />
-                                </div>
-
-                                <div className="col-span-2 lg:col-span-1">
-                                    <Label>Cinsiyyət</Label>
-                                    <Select
-                                        options={options}
-                                        placeholder="Cinsiyyət seçin"
-                                        onChange={handleSelectChange}
-                                        className="dark:bg-dark-900"
-                                    />
-                                </div>
-
-                                <div className="col-span-2 lg:col-span-1">
-                                    <Label>Doğum yeri</Label>
+                                <Field name="born_place" label="Doğum yeri" required error={isInvalid("born_place")}>
                                     <Input
                                         type="text"
                                         name="born_place"
+                                        placeholder="Bakı, Azərbaycan"
                                         value={formData.born_place}
                                         onChange={handleChange}
+                                        error={isInvalid("born_place")}
                                         required
                                     />
-                                </div>
+                                </Field>
 
-                                <div className="col-span-2 lg:col-span-1">
-                                    <Label>Yaşayış yeri</Label>
-                                    <Input
-                                        type="text"
-                                        name="living_location"
-                                        value={formData.living_location}
+                                <Field
+                                    name="personal_id_number"
+                                    label="Şəxsiyyət vəsiqəsinin seriyası"
+                                    required
+                                    error={isInvalid("personal_id_number")}
+                                    errorText="Seriyanı seçin və nömrəni tam daxil edin"
+                                >
+                                    <IdSeriesInput
                                         required
-                                        onChange={handleChange}
+                                        error={isInvalid("personal_id_number")}
+                                        value={formData.personal_id_number}
+                                        onChange={(value) => setField("personal_id_number", value)}
                                     />
-                                </div>
+                                </Field>
 
-                                <div className="col-span-2 lg:col-span-1">
-                                    <Label>Vətəndaşlıq</Label>
+                                <Field name="sex" label="Cinsiyyət" required error={isInvalid("sex")}>
+                                    <Select
+                                        options={options}
+                                        placeholder="Cinsiyyət seçin"
+                                        defaultValue={formData.sex}
+                                        onChange={handleSelectChange}
+                                        className={`dark:bg-dark-900 ${isInvalid("sex") ? "border-error-400" : ""}`}
+                                    />
+                                </Field>
+
+                                <Field name="citizenship" label="Vətəndaşlıq" required error={isInvalid("citizenship")}>
                                     <Input
                                         type="text"
                                         name="citizenship"
+                                        placeholder="Azərbaycan"
                                         value={formData.citizenship}
                                         onChange={handleChange}
+                                        error={isInvalid("citizenship")}
                                         required
                                     />
-                                </div>
+                                </Field>
 
-                                <div className="col-span-2 lg:col-span-1">
-                                    <Label>İş yeri</Label>
+                                <Field
+                                    name="living_location"
+                                    label="Yaşayış yeri"
+                                    required
+                                    wide
+                                    error={isInvalid("living_location")}
+                                >
+                                    <Input
+                                        type="text"
+                                        name="living_location"
+                                        placeholder="Şəhər, rayon, küçə, ev"
+                                        value={formData.living_location}
+                                        onChange={handleChange}
+                                        error={isInvalid("living_location")}
+                                        required
+                                    />
+                                </Field>
+                            </FormSection>
+
+                            <FormSection title="İş yeri və vəzifə">
+                                <Field name="work_place" label="İş yeri" required error={isInvalid("work_place")}>
                                     <Input
                                         type="text"
                                         name="work_place"
                                         value={formData.work_place}
                                         onChange={handleChange}
+                                        error={isInvalid("work_place")}
                                         required
                                     />
-                                </div>
+                                </Field>
 
-                                <div className="col-span-2 lg:col-span-1">
-                                    <Label>Şöbə</Label>
+                                <Field name="department" label="Şöbə" required error={isInvalid("department")}>
                                     <Input
                                         type="text"
                                         name="department"
                                         value={formData.department}
                                         onChange={handleChange}
+                                        error={isInvalid("department")}
                                         required
                                     />
-                                </div>
+                                </Field>
 
-                                <div className="col-span-2 lg:col-span-1">
-                                    <Label>Vəzifə</Label>
+                                <Field name="duty" label="Vəzifə" required error={isInvalid("duty")}>
                                     <Input
                                         type="text"
                                         name="duty"
                                         value={formData.duty}
                                         onChange={handleChange}
+                                        error={isInvalid("duty")}
                                         required
                                     />
-                                </div>
+                                </Field>
 
-                                <div className="col-span-2 lg:col-span-1">
-                                    <Label>Ali təhsil</Label>
+                                <Field name="work_location" label="Layihə rolu">
+                                    <Input type="text" name="work_location" value={formData.work_location} readOnly disabled />
+                                </Field>
+                            </FormSection>
+
+                            <FormSection title="Təhsil və elmi fəaliyyət">
+                                <Field name="main_education" label="Ali təhsil" required error={isInvalid("main_education")}>
                                     <Input
                                         type="text"
                                         name="main_education"
                                         value={formData.main_education}
                                         onChange={handleChange}
+                                        error={isInvalid("main_education")}
                                         required
                                     />
-                                </div>
+                                </Field>
 
-                                <div className="col-span-2 lg:col-span-1">
-                                    <Label>Əlavə ali təhsil</Label>
+                                <Field
+                                    name="additonal_education"
+                                    label="Əlavə ali təhsil"
+                                    required
+                                    error={isInvalid("additonal_education")}
+                                >
                                     <Input
                                         type="text"
                                         name="additonal_education"
                                         value={formData.additonal_education}
                                         onChange={handleChange}
+                                        error={isInvalid("additonal_education")}
                                         required
                                     />
-                                </div>
+                                </Field>
 
-                                <div className="col-span-2 lg:col-span-1">
-                                    <Label>Elmi dərəcə</Label>
+                                <Field
+                                    name="scientific_degree"
+                                    label="Elmi dərəcə"
+                                    required
+                                    error={isInvalid("scientific_degree")}
+                                >
                                     <Input
                                         type="text"
                                         name="scientific_degree"
                                         value={formData.scientific_degree}
                                         onChange={handleChange}
+                                        error={isInvalid("scientific_degree")}
                                         required
                                     />
-                                </div>
+                                </Field>
 
-                                <div className="col-span-2 lg:col-span-1">
-                                    <Label>Elmi dərəcənin tarixi</Label>
+                                <Field
+                                    name="scientific_date"
+                                    label="Elmi dərəcənin tarixi"
+                                    required
+                                    error={isInvalid("scientific_date")}
+                                >
                                     <DatePicker
                                         id="scientific-date-picker"
                                         value={formData.scientific_date}
                                         placeholder="Tarix seçin"
-                                        onChange={(dates, currentDateString) => {
-                                            console.log(dates);
-
-                                            setFormData(prev => ({
-                                                ...prev,
-                                                scientific_date: currentDateString
-                                            }));
-                                        }}
+                                        onChange={(_dates, currentDateString) => setField("scientific_date", currentDateString)}
                                     />
-                                </div>
+                                </Field>
 
-                                <div className="col-span-2 lg:col-span-1">
-                                    <Label>Elmi ad</Label>
+                                <Field name="scientific_name" label="Elmi ad" required error={isInvalid("scientific_name")}>
                                     <Input
                                         type="text"
                                         name="scientific_name"
                                         value={formData.scientific_name}
                                         onChange={handleChange}
+                                        error={isInvalid("scientific_name")}
                                         required
                                     />
-                                </div>
+                                </Field>
 
-                                <div className="col-span-2 lg:col-span-1">
-                                    <Label>Elmi adın verilmə tarixi</Label>
+                                <Field
+                                    name="scientific_name_date"
+                                    label="Elmi adın verilmə tarixi"
+                                    required
+                                    error={isInvalid("scientific_name_date")}
+                                >
                                     <DatePicker
                                         id="scientific-name-date-picker"
                                         value={formData.scientific_name_date}
                                         placeholder="Tarix seçin"
-                                        onChange={(dates, currentDateString) => {
-                                            console.log(dates);
-
-                                            setFormData(prev => ({
-                                                ...prev,
-                                                scientific_name_date: currentDateString
-                                            }));
-                                        }}
+                                        onChange={(_dates, currentDateString) => setField("scientific_name_date", currentDateString)}
                                     />
-                                </div>
+                                </Field>
+                            </FormSection>
 
-                                <div className="col-span-2 lg:col-span-1">
-                                    <Label>Lahiyə rolu</Label>
-                                    <Input
-                                        type="text"
-                                        name="work_location"
-                                        value={formData.work_location}
-                                        required
-                                    />
-                                </div>
-                                <div className="col-span-2 lg:col-span-1">
-                                    <Label>Əlaqə nömrəsi-şəxsi</Label>
+                            <FormSection
+                                title="Əlaqə və profil şəkli"
+                                hint="Əlaqə nömrəsi və epoçt ünvanı həm şəxsi, həm də işlə bağlı yazışmalar üçün istifadə olunur."
+                            >
+                                <Field
+                                    name="personal_mobile_number"
+                                    label="Əlaqə nömrəsi"
+                                    required
+                                    error={isInvalid("personal_mobile_number")}
+                                >
                                     <PhoneInput
                                         selectPosition="start"
-                                        placeholder="+1 (555) 000-0000"
+                                        placeholder="+994 50 000 00 00"
                                         onChange={handlePersonalPhoneNumberChange}
                                     />
-                                </div>
+                                </Field>
 
-                                <div className="col-span-2 lg:col-span-1">
-                                    <Label>Epoçt-adres</Label>
+                                <Field name="personal_email" label="Epoçt ünvanı" required error={isInvalid("personal_email")}>
                                     <Input
-                                        type="text"
+                                        type="email"
                                         name="personal_email"
+                                        placeholder="ad.soyad@aztu.edu.az"
                                         value={formData.personal_email}
                                         onChange={handleChange}
+                                        error={isInvalid("personal_email")}
                                         required
                                     />
-                                </div>
+                                </Field>
 
-                                <div className="col-span-2 lg:col-span-1">
-                                    <Label>Şəkil yüklə</Label>
-                                    {/* <input type="file" accept="image/*" onChange={handleImageChange} /> */}
+                                <Field
+                                    name="image"
+                                    label="Profil şəkli"
+                                    required
+                                    error={isInvalid("image")}
+                                    errorText="Profil şəkli yükləyin"
+                                >
                                     <FileInput className="custom-class" onChange={handleImageChange} />
-                                </div>
+                                    {image ? (
+                                        <p className="mt-1 truncate text-xs text-success-600 dark:text-success-400">
+                                            Seçildi: {image.name}
+                                        </p>
+                                    ) : null}
+                                </Field>
+                            </FormSection>
+
+                            {/* Stays in reach at the bottom of a long form. */}
+                            <div className="sticky bottom-4 z-10 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gray-200/70 bg-white/90 px-5 py-4 shadow-theme-lg backdrop-blur-md dark:border-white/[0.06] dark:bg-gray-900/80">
+                                <span className="text-sm text-gray-500 dark:text-gray-400">
+                                    {filledCount === totalCount
+                                        ? "Bütün məcburi sahələr doldurulub."
+                                        : `${totalCount - filledCount} məcburi sahə qalıb.`}
+                                </span>
+                                <Button className="min-w-[10rem]">
+                                    Təsdiq edin
+                                </Button>
                             </div>
-                            <Button className="mt-10">
-                                Təsdiq edin
-                            </Button>
                         </form>
                     </div>
                 </>
