@@ -26,6 +26,7 @@ import EmojiEventsOutlinedIcon from '@mui/icons-material/EmojiEventsOutlined';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined';
 import HistoryIcon from '@mui/icons-material/History';
+import GroupsIcon from '@mui/icons-material/Groups';
 
 type NavItem = {
   name: string;
@@ -139,6 +140,11 @@ const AppSidebar: React.FC = () => {
           ],
         },
         {
+          icon: <GroupsIcon />,
+          name: "İcraçı olduğum layihə",
+          path: "/collaborator-project"
+        },
+        {
           icon: <SwapHorizIcon />,
           name: "Rol dəyişikliyi",
           path: "/role-change"
@@ -213,7 +219,7 @@ const AppSidebar: React.FC = () => {
       ] : projectRole === 1 ? [
         {
           icon: <WorkIcon />,
-          name: "İcraçı olduğum layihə",
+          name: "İcraçı olduğum layihələr",
           path: "/collaborator-project"
         },
         {

@@ -138,7 +138,9 @@ export default function Collaborators({ projectCode }: { projectCode: Number | n
         );
     };
 
-    const showViewColumn = pathname === "/collaborators";
+    // Whoever manages the team also needs to reach a member's profile — that is
+    // where their other projects are listed.
+    const showViewColumn = pathname === "/collaborators" || canManage;
     const columnCount = 3 + (showViewColumn ? 1 : 0) + (canManage ? 1 : 0);
 
     return (

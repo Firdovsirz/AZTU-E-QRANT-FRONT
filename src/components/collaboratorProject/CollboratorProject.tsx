@@ -18,7 +18,10 @@ import ProjectDetailsView from "../projectDetailsView/ProjectDetailsView";
 
 export default function CollboratorProject() {
     const finKod = useSelector((state: RootState) => state.auth.fin_kod);
-    const [projectCode, setProjectCode] = useState<number | null>();
+    // A person may be an executor on more than one project, so this page holds
+    // all of them and shows one at a time.
+    const [projectCodes, setProjectCodes] = useState<number[]>([]);
+    const [projectCode, setProjectCode] = useState<number | null>(null);
     const [loading, setLoading] = useState(true);
     const printRef = useRef<HTMLDivElement>(null);
     const [isExporting, setIsExporting] = useState(false);
@@ -64,12 +67,17 @@ export default function CollboratorProject() {
     };
 
     useEffect(() => {
-        const fetchProjectCode = async () => {
+        const fetchProjectCodes = async () => {
             try {
                 const response = await apiClient.get(`/api/col-project/${finKod}`);
 
                 if (response.data.status === 200) {
-                    setProjectCode(response.data.project_code);
+                    // `project_codes` is the current shape; `project_code` is the
+                    // single-team fallback for an older backend.
+                    const codes: number[] = response.data.project_codes
+                        ?? (response.data.project_code ? [response.data.project_code] : []);
+                    setProjectCodes(codes);
+                    setProjectCode(codes[0] ?? null);
                 }
             } catch (err) {
                 console.error(err);
@@ -78,7 +86,7 @@ export default function CollboratorProject() {
             }
         };
 
-        fetchProjectCode();
+        fetchProjectCodes();
     }, [finKod]);
 
     if (loading) {
@@ -106,6 +114,29 @@ export default function CollboratorProject() {
             >
                 {isExporting ? <CircularProgress size={20} color="inherit" /> : "PDF yüklə"}
             </Button>
+
+            {/* Only worth a switcher once there really is a second project. */}
+            {projectCodes.length > 1 ? (
+                <div className="mb-5 flex flex-wrap items-center gap-2">
+                    <span className="mr-1 text-sm text-gray-500 dark:text-gray-400">
+                        İcraçı olduğunuz layihələr:
+                    </span>
+                    {projectCodes.map((code, index) => (
+                        <button
+                            key={code}
+                            type="button"
+                            onClick={() => setProjectCode(code)}
+                            className={`rounded-xl px-3.5 py-2 text-sm font-semibold transition-colors ${code === projectCode
+                                ? "bg-brand-600 text-white shadow-theme-sm"
+                                : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-white/[0.06] dark:text-gray-300 dark:hover:bg-white/[0.1]"
+                                }`}
+                        >
+                            {index + 1}. layihə
+                            <span className="ml-1.5 opacity-70">#{code}</span>
+                        </button>
+                    ))}
+                </div>
+            ) : null}
 
             <div
                 ref={printRef}

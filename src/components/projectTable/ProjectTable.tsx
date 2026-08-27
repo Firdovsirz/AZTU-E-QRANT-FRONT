@@ -14,22 +14,29 @@ import apiClient from "../../util/apiClient";
 import { RootState } from "../../redux/store";
 import ReadMore from "../ui/ReadMore";
 import EditIcon from '@mui/icons-material/Edit';
+import GroupsIcon from '@mui/icons-material/Groups';
 import DeleteIcon from '@mui/icons-material/Delete';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import CircularProgress from '@mui/material/CircularProgress';
-import { setGlobalIsCollaborator } from "../../redux/slices/authSlice";
-import { useDispatch } from "react-redux";
+import useCollaborationStatus from "../../hooks/useCollaborationStatus";
 
 export default function ProjectTable() {
-    const disptach = useDispatch();
     const [loading, setLoading] = useState(true);
     const [projects, setProjects] = useState<any[]>([]);
     const [winnerLoading, setWinnerLoading] = useState<number | null>(null);
     const [deletingCode, setDeletingCode] = useState<number | null>(null);
     const fin_kod = useSelector((state: RootState) => state.auth.fin_kod);
     const projectRole = useSelector((state: RootState) => state.auth.projectRole);
-    const isCollaborator = useSelector((state: RootState) => state.auth.isCollaborator);
+    // Leads take part in projects too, so both roles get the "join" column.
+    const canJoinProjects = projectRole === 0 || projectRole === 1;
+    const {
+        projectCodes: joinedCodes,
+        allowedSlots,
+        remainingSlots,
+        canJoinMore,
+        refresh: refreshCollaboration,
+    } = useCollaborationStatus();
 
     useEffect(() => {
         const fetchProjects = async () => {
@@ -45,27 +52,15 @@ export default function ProjectTable() {
         fetchProjects();
     }, []);
 
-    // `isCollaborator` is cached at sign-in. Someone removed from a team since
-    // then would still see "İştirakçı Ol" disabled and could never re-apply
-    // without logging out, so re-read the truth whenever this list opens.
-    useEffect(() => {
-        if (projectRole !== 1) return;
-
-        const refreshCollaboratorStatus = async () => {
-            try {
-                const response = await apiClient.get('/api/my-collaborator-status');
-                disptach(setGlobalIsCollaborator(!!response.data?.data?.is_collaborator));
-            } catch (error) {
-                console.error("Failed to refresh collaborator status:", error);
-            }
-        };
-        refreshCollaboratorStatus();
-    }, [projectRole, disptach]);
 
     const handleBeCollaborator = async (fin_kod: string, project_code: string) => {
+    const slotsAfter = remainingSlots - 1;
     const result = await Swal.fire({
         title: 'Əminsiniz?',
-        text: 'Layihəyə iştirakçı olaraq qoşulmaq istədiyinizə əminsiniz? \n Təsdiqlədikdən sonra yalnız bir layihədə icraçı olursuz və layihə dəyişikliyi mümkün deyil.',
+        text: `Layihəyə iştirakçı olaraq qoşulmaq istədiyinizə əminsiniz? Qoşulduqdan sonra `
+            + (slotsAfter > 0
+                ? `daha ${slotsAfter} layihədə icraçı ola bilərsiniz.`
+                : 'bu müsabiqədə başqa layihəyə qoşula bilməyəcəksiniz.'),
         icon: 'question',
         showCancelButton: true,
         confirmButtonText: 'Bəli, əminəm',
@@ -81,7 +76,9 @@ export default function ProjectTable() {
         });
 
         if (response.data.status === 201) {
-            disptach(setGlobalIsCollaborator(true));
+            // Re-read the slots rather than guessing: the answer decides which
+            // of the remaining projects still offer a "join" button.
+            await refreshCollaboration();
             Swal.fire({
                 icon: 'success',
                 title: 'İştirakçı olaraq əlavə olundunuz!',
@@ -107,12 +104,17 @@ export default function ProjectTable() {
                 }
             });
         } else if (error.response?.status === 409) {
+            // 409 covers both a full project and a used-up personal limit; the
+            // backend says which, so show its message rather than guessing.
             Swal.fire({
                 title: 'Xəta!',
-                text: 'Layihə üçün bütün yerlər doludur!',
+                text: error.response?.data?.message
+                    ?? error.response?.data?.error
+                    ?? 'Layihə üçün bütün yerlər doludur!',
                 icon: 'error',
                 confirmButtonText: 'Ok',
             });
+            refreshCollaboration();
         } else {
             Swal.fire('Xəta!', 'Serverlə əlaqə zamanı xəta baş verdi.', 'error');
         }
@@ -203,10 +205,39 @@ export default function ProjectTable() {
         );
     };
 
-    const emptyColSpan = projectRole === 2 ? 9 : projectRole === 1 ? 5 : 4;
+    const emptyColSpan = projectRole === 2 ? 9 : canJoinProjects ? 5 : 4;
+
+    /** Why this project's "join" button is unavailable, or null when it is. */
+    const joinBlockedReason = (project: any): string | null => {
+        if (project.fin_kod === fin_kod) return "Bu, sizin öz layihənizdir";
+        if (joinedCodes.includes(project.project_code)) return "Artıq bu layihənin icraçısısınız";
+        if (!project.approved) return "Layihə hələ təsdiqlənməyib";
+        if (!canJoinMore) return `İcraçı ola biləcəyiniz layihə sayı doludur (maksimum ${allowedSlots})`;
+        return null;
+    };
 
     return (
         <>
+            {/* State the rule where the decision is made, so a disabled
+                "İştirakçı Ol" never looks like a bug. */}
+            {canJoinProjects && allowedSlots > 0 ? (
+                <div
+                    className={`mb-4 flex flex-wrap items-center gap-2 rounded-2xl border px-4 py-3 text-sm ${canJoinMore
+                        ? "border-brand-200/70 bg-brand-50/60 text-brand-800 dark:border-brand-500/20 dark:bg-brand-500/10 dark:text-brand-200"
+                        : "border-gray-200/70 bg-gray-50 text-gray-600 dark:border-white/[0.06] dark:bg-white/[0.03] dark:text-gray-300"
+                        }`}
+                >
+                    <GroupsIcon style={{ width: 18, height: 18 }} />
+                    <span>
+                        Bu müsabiqədə <b>{allowedSlots}</b> layihədə icraçı ola bilərsiniz
+                        {projectRole === 0 ? " (öz layihənizdən əlavə)" : ""}.
+                        {" "}
+                        {canJoinMore
+                            ? `Hazırda ${joinedCodes.length} layihədə iştirak edirsiniz, ${remainingSlots} yeriniz boşdur.`
+                            : "Bütün yerlərinizdən istifadə etmisiniz."}
+                    </span>
+                </div>
+            ) : null}
             <div className="overflow-hidden rounded-2xl border border-gray-200/70 bg-white/80 backdrop-blur-sm shadow-theme-sm dark:border-white/[0.06] dark:bg-gray-900/40">
                 <div className="max-w-full overflow-x-auto">
                     <Table>
@@ -248,7 +279,7 @@ export default function ProjectTable() {
                                         Baxış
                                     </TableCell>
                                 ) : null}
-                                {projectRole === 1 ? (
+                                {canJoinProjects ? (
                                     <TableCell
                                         isHeader
                                         className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
@@ -333,12 +364,24 @@ export default function ProjectTable() {
                                             </Link>
                                         </TableCell>
                                     ) : null}
-                                    {projectRole === 1 ? (
+                                    {canJoinProjects ? (
                                         <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
                                             {fin_kod && (
-                                                <Button onClick={() => handleBeCollaborator(fin_kod, project.project_code)} disabled={!project.approved || !!isCollaborator}>
-                                                    İştirakçı Ol
-                                                </Button>
+                                                joinedCodes.includes(project.project_code) ? (
+                                                    <span className="inline-flex items-center gap-1.5 rounded-full bg-success-50 px-2.5 py-1 text-xs font-semibold text-success-700 ring-1 ring-inset ring-success-200/60 dark:bg-success-500/15 dark:text-success-400 dark:ring-success-400/20">
+                                                        <span className="h-1.5 w-1.5 rounded-full bg-success-500" />
+                                                        İcraçısınız
+                                                    </span>
+                                                ) : (
+                                                    <span title={joinBlockedReason(project) ?? undefined}>
+                                                        <Button
+                                                            onClick={() => handleBeCollaborator(fin_kod, project.project_code)}
+                                                            disabled={!!joinBlockedReason(project)}
+                                                        >
+                                                            İştirakçı Ol
+                                                        </Button>
+                                                    </span>
+                                                )
                                             )}
                                         </TableCell>
                                     ) : null}

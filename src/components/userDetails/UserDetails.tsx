@@ -14,6 +14,8 @@ import { RootState } from "../../redux/store";
 import FileInput from "../form/input/FileInput";
 import Profile from "../../../public/profile.webp";
 import PhoneInput from "../form/group-input/PhoneInput";
+import IdSeriesInput from "../form/IdSeriesInput";
+import { isCompleteIdNumber } from "../../util/idNumber";
 import CircularProgress from "@mui/material/CircularProgress";
 import { setGlobalProfilCompleted } from "../../redux/slices/authSlice";
 
@@ -136,6 +138,18 @@ export default function UserDetails({ fin_kod }: { fin_kod: string | undefined |
             return !value || value.toString().trim() === "";
         });
 
+        // A series on its own ("AZE" with no number) passes the empty check
+        // above, so the document number is validated on its own terms.
+        if (emptyFields.length === 0 && !isCompleteIdNumber(formData.personal_id_number)) {
+            Swal.fire({
+                icon: "warning",
+                title: "Şəxsiyyət vəsiqəsinin seriyası tam deyil",
+                text: "Seriyanı seçin və nömrəni tam daxil edin.",
+                confirmButtonText: "Bağla"
+            });
+            return;
+        }
+
         if (emptyFields.length > 0 || !image) {
             const formattedFieldNames = emptyFields
                 .map(field => `• ${field.replace(/_/g, " ")}`)
@@ -240,6 +254,18 @@ export default function UserDetails({ fin_kod }: { fin_kod: string | undefined |
     const handleEditSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!fin_kod) return;
+
+        // A value saved before the series became a fixed list may have no
+        // recognised prefix, so this also catches an old record on its way past.
+        if (!isCompleteIdNumber(editFormData.personal_id_number)) {
+            Swal.fire({
+                icon: "warning",
+                title: "Şəxsiyyət vəsiqəsinin seriyası tam deyil",
+                text: "Seriyanı seçin və nömrəni tam daxil edin.",
+                confirmButtonText: "Bağla"
+            });
+            return;
+        }
 
         try {
             const res = await apiClient.put(`/api/profile/${fin_kod}/edit`, editFormData);
@@ -625,7 +651,12 @@ export default function UserDetails({ fin_kod }: { fin_kod: string | undefined |
                                 </div>
                                 <div>
                                   <Label>Şəxsiyyet vəsiqəsinin seriyası</Label>
-                                  <Input type="text" name="personal_id_number" value={editFormData.personal_id_number ?? user?.personal_id_number ?? ""} onChange={handleEditInputChange} />
+                                  <IdSeriesInput
+                                    value={editFormData.personal_id_number ?? user?.personal_id_number ?? ""}
+                                    onChange={(value) =>
+                                      setEditFormData(prev => ({ ...prev, personal_id_number: value }))
+                                    }
+                                  />
                                 </div>
                                 <div>
                                   <Label>Cinsiyyət</Label>
@@ -800,13 +831,12 @@ export default function UserDetails({ fin_kod }: { fin_kod: string | undefined |
 
                                 <div className="col-span-2 lg:col-span-1">
                                     <Label>Şəxsiyyət vəsiqəsinin seriyası</Label>
-                                    <Input
-                                        maxLength={10}
-                                        type="text"
-                                        name="personal_id_number"
-                                        value={formData.personal_id_number}
+                                    <IdSeriesInput
                                         required
-                                        onChange={handleChange}
+                                        value={formData.personal_id_number}
+                                        onChange={(value) =>
+                                            setFormData(prev => ({ ...prev, personal_id_number: value }))
+                                        }
                                     />
                                 </div>
 

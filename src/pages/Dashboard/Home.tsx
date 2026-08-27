@@ -11,6 +11,7 @@ import CampaignOutlinedIcon from '@mui/icons-material/CampaignOutlined';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import PageMeta from "../../components/common/PageMeta";
+import ProjectMemberships from "../../components/projectMemberships/ProjectMemberships";
 import { Announcement, getAnnouncements } from "../../services/announcement/announcement";
 import AztuLogoLight from "../../../public/aztu-logo-light.png";
 import GrantLogoLight from "../../../public/e-grant-logo-light.png";
@@ -67,10 +68,12 @@ export default function Home() {
   ];
   if (role === 0) {
     actions.push({ to: "/project-offer", icon: <SchoolIcon />, label: "Layihə detalları", desc: "Layihə təklifiniz", accent: "from-cyan-500 to-blue-500" });
+    // A lead may also serve as an executor on one further project.
+    actions.push({ to: "/collaborator-project", icon: <GroupsIcon />, label: "İcraçı olduğum layihə", desc: "Qoşulduğunuz layihə", accent: "from-sky-500 to-indigo-500" });
     actions.push({ to: "/messages", icon: <ChatBubbleOutlineIcon />, label: "Mesajlar", desc: "Admin ilə yazışma", accent: "from-emerald-500 to-teal-500" });
   }
   if (role === 1) {
-    actions.push({ to: "/collaborator-project", icon: <GroupsIcon />, label: "İcraçı olduğum layihə", desc: "Komanda layihəniz", accent: "from-cyan-500 to-blue-500" });
+    actions.push({ to: "/collaborator-project", icon: <GroupsIcon />, label: "İcraçı olduğum layihələr", desc: "Komanda layihələriniz", accent: "from-cyan-500 to-blue-500" });
   }
   if (role === 2) {
     actions.push({ to: "/competitions", icon: <EmojiEventsOutlinedIcon />, label: "Müsabiqələr", desc: "Müsabiqə idarəetməsi", accent: "from-amber-500 to-orange-500" });
@@ -118,6 +121,10 @@ export default function Home() {
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {actions.map((a) => <ActionCard key={a.to} {...a} />)}
       </div>
+
+      {/* What this user takes part in right now. Admins take part in nothing,
+          so they are not asked. */}
+      {(role === 0 || role === 1) && <ProjectMemberships />}
 
       {/* Announcements */}
       {announcements.length > 0 && (
