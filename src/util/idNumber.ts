@@ -1,7 +1,11 @@
 /** The series prefixes an Azerbaijani identity document can carry. */
-export const ID_SERIES_OPTIONS = ["AA", "AB", "AZE"] as const;
+export const ID_SERIES_OPTIONS = ["AA", "AB", "AZE", "MYI"] as const;
 
-/** Digits after the prefix — 7 on an AA/AB ID card, 8 in an AZE passport. */
+/**
+ * Digits after the prefix — 7 on an AA/AB ID card, 8 in an AZE passport. The
+ * cap is the longest of them and no minimum is enforced, so a series whose
+ * length differs (MYI) is not rejected out of hand.
+ */
 export const MAX_ID_DIGITS = 8;
 
 export interface ParsedIdNumber {
