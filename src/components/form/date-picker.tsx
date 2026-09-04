@@ -1,5 +1,5 @@
 import Label from "./Label";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import flatpickr from "flatpickr";
 import Hook = flatpickr.Options.Hook;
 import "flatpickr/dist/flatpickr.css";
@@ -25,6 +25,13 @@ export default function DatePicker({
   placeholder,
   value
 }: PropsType) {
+  // `static: true` drops the calendar into the page next to its input rather
+  // than on `document.body`, so it competes for stacking order with whatever
+  // comes after it — and the fields below, which paint their own layer for the
+  // backdrop blur, win. Lifting only the OPEN picker keeps the calendar on top
+  // without letting a later picker's input cover an earlier one's calendar.
+  const [isOpen, setIsOpen] = useState(false);
+
   useEffect(() => {
     const flatPickr = flatpickr(`#${id}`, {
       mode: mode || "single",
@@ -33,6 +40,8 @@ export default function DatePicker({
       dateFormat: "Y-m-d",
       defaultDate,
       onChange,
+      onOpen: () => setIsOpen(true),
+      onClose: () => setIsOpen(false),
     });
 
     return () => {
@@ -46,7 +55,7 @@ export default function DatePicker({
     <div>
       {label && <Label htmlFor={id}>{label}</Label>}
 
-      <div className="relative">
+      <div className={`relative ${isOpen ? "z-[60]" : ""}`}>
         <input
           id={id}
           value={value}

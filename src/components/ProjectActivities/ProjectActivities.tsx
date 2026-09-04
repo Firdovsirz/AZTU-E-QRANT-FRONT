@@ -21,7 +21,10 @@ interface Activity {
 interface ProjectActivity {
     id: number;
     activity_name: string;
+    /** First month, kept by the API for older clients. */
     month: number;
+    /** Every month the activity runs in. */
+    months: number[];
     project_code: number;
     created_at: string;
     updated_at: string | null;
@@ -58,7 +61,9 @@ const ProjectActivitiesTable = ({ projectCode: projectCodeProp }: { projectCode?
                     const existing = res.data.activities.map((a) => ({
                         id: a.id,
                         name: a.activity_name,
-                        months: [a.month.toString()],
+                        // `months` is the current field; fall back to the single
+                        // `month` for a row written before activities could span.
+                        months: (a.months ?? [a.month]).map(String),
                         created: true,
                         isEditing: false
                     }));
@@ -80,7 +85,7 @@ const ProjectActivitiesTable = ({ projectCode: projectCodeProp }: { projectCode?
         );
     };
 
-    // ✅ Handle month selection (only one month per activity)
+    // ✅ Handle month selection — an activity may run over several months
     const handleMonthChange = (index: number, selectedMonth: string) => {
         setActivities((prev) =>
             prev.map((act, i) =>
@@ -89,7 +94,7 @@ const ProjectActivitiesTable = ({ projectCode: projectCodeProp }: { projectCode?
                         ...act,
                         months: act.months.includes(selectedMonth)
                             ? act.months.filter((m) => m !== selectedMonth)
-                            : [selectedMonth] // Only one month allowed per activity
+                            : [...act.months, selectedMonth].sort((a, b) => +a - +b)
                     }
                     : act
             )
@@ -100,21 +105,24 @@ const ProjectActivitiesTable = ({ projectCode: projectCodeProp }: { projectCode?
     const handleCreate = async (index: number) => {
         const activity = activities[index];
         if (!activity.name.trim() || activity.months.length === 0) {
-            alert("Fəaliyyət adı və ay seçilməlidir!");
+            alert("Fəaliyyət adı və ən azı bir ay seçilməlidir!");
             return;
         }
 
         try {
             setLoading(true);
-            await apiClient.post("/api/project-activity/create", {
+            const res = await apiClient.post("/api/project-activity/create", {
                 activity_name: activity.name,
-                month: parseInt(activity.months[0]),
+                months: activity.months.map(Number),
                 project_code: projectCode
             });
 
+            // Keep the id the server assigned, otherwise the row cannot be
+            // edited or deleted until the page is reloaded.
+            const created = res.data?.activity;
             setActivities((prev) =>
                 prev.map((act, i) =>
-                    i === index ? { ...act, created: true } : act
+                    i === index ? { ...act, created: true, id: created?.id ?? act.id } : act
                 )
             );
         } catch (err) {
@@ -138,16 +146,7 @@ const ProjectActivitiesTable = ({ projectCode: projectCodeProp }: { projectCode?
     const handleSave = async (index: number) => {
         const activity = activities[index];
         if (!activity.name.trim() || activity.months.length === 0) {
-            alert("Fəaliyyət adı və ay seçilməlidir!");
-            return;
-        }
-        // Validate month is not used by other activities (excluding the current one)
-        const selectedMonth = activity.months[0];
-        const monthUsedByOther = activities.some(
-            (act, i) => i !== index && act.months.includes(selectedMonth)
-        );
-        if (monthUsedByOther) {
-            alert("Seçilmiş ay başqa bir fəaliyyət tərəfindən istifadə olunur!");
+            alert("Fəaliyyət adı və ən azı bir ay seçilməlidir!");
             return;
         }
         if (!activity.id) {
@@ -159,7 +158,7 @@ const ProjectActivitiesTable = ({ projectCode: projectCodeProp }: { projectCode?
             setLoading(true);
             await apiClient.patch(`/api/project-activity/update/${activity.id}`, {
                 activity_name: activity.name,
-                month: parseInt(selectedMonth),
+                months: activity.months.map(Number),
             });
 
             setActivities((prev) =>
@@ -195,10 +194,6 @@ const ProjectActivitiesTable = ({ projectCode: projectCodeProp }: { projectCode?
         }
     };
 
-    const selectedMonths = new Set(
-        activities.flatMap((a) => a.months)
-    );
-
     const isAnyEditing = activities.some((act) => act.isEditing);
 
     return (
@@ -209,7 +204,13 @@ const ProjectActivitiesTable = ({ projectCode: projectCodeProp }: { projectCode?
             </h2>
             ) : null}
 
-            <table className="table-auto border-collapse border border-gray-300 w-full">
+            <p className="mb-3 text-sm text-gray-500 dark:text-gray-400">
+                Bir fəaliyyət üçün <span className="font-semibold">bir neçə ay</span> seçə bilərsiniz.
+                Eyni ayda bir neçə fəaliyyət də ola bilər.
+            </p>
+
+            <div className="max-w-full overflow-x-auto">
+            <table className="table-auto border-collapse border border-gray-300 w-full min-w-[900px]">
                 <thead>
                     <tr className="bg-gray-100">
                         <th className="border border-gray-300 px-4 py-2">#</th>
@@ -264,24 +265,23 @@ const ProjectActivitiesTable = ({ projectCode: projectCodeProp }: { projectCode?
                                         />
                                     </td>
 
-                                    {months.map((month) => {
-                                        const isSelectedByOtherMonth =
-                                            selectedMonths.has(month) && !activity.months.includes(month);
-                                        return (
-                                            <td key={month} className="border border-gray-300 text-center">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={activity.months.includes(month)}
-                                                    onChange={() => handleMonthChange(index, month)}
-                                                    disabled={
-                                                        disableInputs ||
-                                                        (!activity.isEditing && activity.created) ||
-                                                        isSelectedByOtherMonth
-                                                    }
-                                                />
-                                            </td>
-                                        );
-                                    })}
+                                    {/* Several activities may run in the same month, and one
+                                        activity may run across several — no exclusivity here. */}
+                                    {months.map((month) => (
+                                        <td key={month} className="border border-gray-300 text-center">
+                                            <input
+                                                type="checkbox"
+                                                aria-label={`${month}-ci ay`}
+                                                className="h-4 w-4 cursor-pointer accent-brand-600 disabled:cursor-not-allowed"
+                                                checked={activity.months.includes(month)}
+                                                onChange={() => handleMonthChange(index, month)}
+                                                disabled={
+                                                    disableInputs ||
+                                                    (!activity.isEditing && activity.created)
+                                                }
+                                            />
+                                        </td>
+                                    ))}
 
                                     <td className="border border-gray-300 text-center">
                                         {!activity.created ? (
@@ -328,6 +328,7 @@ const ProjectActivitiesTable = ({ projectCode: projectCodeProp }: { projectCode?
                     )}
                 </tbody>
             </table>
+            </div>
         </div>
     );
 };

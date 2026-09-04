@@ -6,7 +6,7 @@ import Button from "../ui/button/Button";
 import { useDispatch } from "react-redux";
 import { useSelector } from "react-redux";
 import { useNavigate } from "react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import DatePicker from "../form/date-picker";
 import Input from "../form/input/InputField";
 import apiClient from "../../util/apiClient";
@@ -16,6 +16,7 @@ import Profile from "../../../public/profile.webp";
 import PhoneInput from "../form/group-input/PhoneInput";
 import IdSeriesInput from "../form/IdSeriesInput";
 import { isCompleteIdNumber } from "../../util/idNumber";
+import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
 import CircularProgress from "@mui/material/CircularProgress";
 import { setGlobalProfilCompleted } from "../../redux/slices/authSlice";
 
@@ -170,6 +171,38 @@ export default function UserDetails({ fin_kod }: { fin_kod: string | undefined |
         personal_email: "",
         work_email: "",
     });
+    // Replacing the photo on an already-completed profile.
+    const [photoUploading, setPhotoUploading] = useState(false);
+    const photoInputRef = useRef<HTMLInputElement>(null);
+
+    const handlePhotoReplace = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        // Clear the input straight away, otherwise picking the same file twice
+        // in a row fires no change event.
+        e.target.value = "";
+        if (!file || !fin_kod) return;
+
+        const payload = new FormData();
+        payload.append("image", file);
+
+        try {
+            setPhotoUploading(true);
+            const res = await apiClient.post(`/api/profile/${fin_kod}/image`, payload);
+            const image = res.data?.data?.image;
+            if (image) setUser(prev => (prev ? { ...prev, image } : prev));
+            Swal.fire({ icon: "success", title: "Profil şəkli yeniləndi!", confirmButtonText: "OK" });
+        } catch (error: any) {
+            console.error("Failed to update the profile image:", error);
+            Swal.fire(
+                "Xəta baş verdi!",
+                error.response?.data?.error ?? "Şəkli yeniləmək mümkün olmadı.",
+                "error"
+            );
+        } finally {
+            setPhotoUploading(false);
+        }
+    };
+
     // Which fields the last submit attempt rejected, so the form can point at
     // them instead of only listing names in a dialog.
     const [invalidFields, setInvalidFields] = useState<string[]>([]);
@@ -471,24 +504,34 @@ export default function UserDetails({ fin_kod }: { fin_kod: string | undefined |
                     <div className="p-5 border border-gray-200 rounded-2xl dark:border-gray-800 lg:p-4 mb-[50px]">
                         <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
                             <div className="flex flex-col items-center w-full gap-4 xl:flex-row">
-                                <div className="w-20 h-20 overflow-hidden border border-gray-200 rounded-full dark:border-gray-800">
-                                    {user?.image ? (
-                                        <div className="col-span-5 lg:col-span-1">
-                                            <img
-                                                src={`data:image/jpeg;base64,${user.image}`}
-                                                alt="User"
-                                                className="w-[100%] h-[100%] rounded-full object-cover border border-gray-300"
-                                            />
-                                        </div>
-                                    ) : (
-                                        <div className="col-span-5 lg:col-span-1">
-                                            <img
-                                                src={Profile}
-                                                alt="User"
-                                                className="w-[100%] h-[100%] rounded-full object-cover border border-gray-300"
-                                            />
-                                        </div>
-                                    )}
+                                {/* The photo used to be fixed once the profile was
+                                    completed; the overlay button replaces it. */}
+                                <div className="group relative h-20 w-20 shrink-0">
+                                    <img
+                                        src={user?.image ? `data:image/jpeg;base64,${user.image}` : Profile}
+                                        alt="User"
+                                        className="h-full w-full rounded-full border border-gray-200 object-cover dark:border-gray-800"
+                                    />
+
+                                    <button
+                                        type="button"
+                                        title="Profil şəklini dəyiş"
+                                        onClick={() => photoInputRef.current?.click()}
+                                        disabled={photoUploading}
+                                        className="absolute inset-0 flex items-center justify-center rounded-full bg-gray-900/55 text-white opacity-0 transition-opacity duration-200 focus:opacity-100 focus:outline-none group-hover:opacity-100 disabled:opacity-100"
+                                    >
+                                        {photoUploading
+                                            ? <CircularProgress size={22} color="inherit" />
+                                            : <PhotoCameraIcon style={{ width: 22, height: 22 }} />}
+                                    </button>
+
+                                    <input
+                                        ref={photoInputRef}
+                                        type="file"
+                                        accept="image/png,image/jpeg,image/webp"
+                                        className="hidden"
+                                        onChange={handlePhotoReplace}
+                                    />
                                 </div>
                                 <div className="order-3 xl:order-2">
                                     <h4 className="mb-2 text-lg font-semibold text-center text-gray-800 dark:text-white/90 xl:text-left">
@@ -504,7 +547,7 @@ export default function UserDetails({ fin_kod }: { fin_kod: string | undefined |
                                 <h4 className="text-lg font-semibold text-gray-800 dark:text-white/90 lg:mb-4">
                                     Şəxsi məlumatlar
                                 </h4>
-                                <div className="grid grid-cols-5 gap-5 lg:grid-cols-5 lg:gap-5 2xl:gap-x-32">
+                                <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:gap-x-10">
                                     <div>
                                         <p className="mb-2 text-xs leading-normal text-gray-500 dark:text-gray-400">
                                             Ad
@@ -729,11 +772,11 @@ export default function UserDetails({ fin_kod }: { fin_kod: string | undefined |
                     <Modal
                         isOpen={isEditModalOpen}
                         onClose={() => setIsEditModalOpen(false)}
-                        className="max-w-3xl mx-auto p-[40px]"
+                        className="max-w-3xl mx-auto max-h-[90vh] overflow-y-auto p-5 sm:p-8 lg:p-10"
                     >
-                        <div className="max-w-3xl mx-auto w-full">
+                        <div className="mx-auto w-full max-w-3xl">
                             <form onSubmit={handleEditSubmit}>
-                              <div className="grid grid-cols-1 gap-x-4 gap-y-5 lg:grid-cols-2">
+                              <div className="grid grid-cols-1 gap-x-5 gap-y-5 sm:grid-cols-2">
                                 <div>
                                   <Label>Ad</Label>
                                   <Input type="text" name="name" value={editFormData.name ?? user?.name ?? ""} onChange={handleEditInputChange} />

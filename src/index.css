@@ -522,6 +522,13 @@ table tbody tr:last-child td:last-child  { border-bottom-right-radius: 14px; }
 .flatpickr-calendar {
   @apply mt-2 bg-white! rounded-xl! p-5! border! border-gray-200! text-gray-500! dark:bg-gray-dark! dark:text-gray-400! dark:shadow-theme-xl! 2xsm:w-auto!;
 }
+/* flatpickr gives the inline ("static") calendar z-index 999, which loses to
+   the sticky form footer and to any later field that paints its own layer.
+   The wrapper is lifted while open (see date-picker.tsx); this keeps the
+   calendar above its own siblings. */
+.flatpickr-calendar.static.open {
+  @apply z-[70]! shadow-theme-xl!;
+}
 
 .flatpickr-months .flatpickr-prev-month:hover svg,
 .flatpickr-months .flatpickr-next-month:hover svg {
