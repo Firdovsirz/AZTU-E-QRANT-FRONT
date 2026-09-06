@@ -11,6 +11,22 @@ import { useDispatch, useSelector } from "react-redux";
 import ArrowBackIosIcon from '@mui/icons-material/ArrowBackIos';
 import { loginSuccess, setFinKod, setUserType } from "../../redux/slices/authSlice";
 
+/** FIN codes are 7 characters; an expert signs in with their e-mail instead. */
+const FIN_PATTERN = /^[A-Z0-9]{7}$/;
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const looksLikeEmail = (value: string) => value.includes("@");
+
+/** null when the identifier is usable, otherwise why it is not. */
+function identifierError(value: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  if (looksLikeEmail(trimmed)) {
+    return EMAIL_PATTERN.test(trimmed) ? null : "E-poçt ünvanı düzgün formatda deyil.";
+  }
+  return FIN_PATTERN.test(trimmed) ? null : "FIN kod 7 simvoldan ibarət olmalıdır.";
+}
+
 export default function SignInForm() {
   const [finKod, setFinKodInterally] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -33,6 +49,11 @@ export default function SignInForm() {
       password.length === 0
     ) {
       return Swal.fire("Xəta", "Bütün məlumatları doldurun", "error");
+    }
+
+    const identifierProblem = identifierError(finKod);
+    if (identifierProblem) {
+      return Swal.fire("Xəta", identifierProblem, "error");
     }
 
     try {
@@ -58,13 +79,26 @@ export default function SignInForm() {
         const projectRole = response.data.data.auth.project_role;
         console.log("project role", projectRole);
 
+        const mustChangePassword = !!response.data.data.must_change_password;
+
         dispatch(setFinKod(finKod));
-        dispatch(loginSuccess({ token, user: authData, is_collaborator, projectCode, profileCompleted }));
-        { projectRole === 0 ? navigate("/project-offer") : navigate("/") }
-        navigate("/home");
+        dispatch(loginSuccess({
+          token, user: authData, is_collaborator, projectCode, profileCompleted,
+          mustChangePassword,
+        }));
+
+        // An expert arrives with a one-time password from their appointment
+        // e-mail and cannot go anywhere until they replace it.
+        if (mustChangePassword) {
+          navigate("/change-password");
+        } else if (projectRole === 3) {
+          navigate("/expert/projects");
+        } else {
+          navigate("/home");
+        }
       }
     } catch (error) {
-      Swal.fire("Xəta baş verdi", "Fin kod və ya şifrə yanlışdır", "error");
+      Swal.fire("Xəta baş verdi", "FIN kod / e-poçt və ya şifrə yanlışdır", "error");
     } finally {
       setLoading(false);
     }
@@ -82,14 +116,27 @@ export default function SignInForm() {
           <div className="space-y-5">
             <div>
               <Label>
-                Fin kod <span className="text-error-500">*</span>
+                FIN kod və ya e-poçt <span className="text-error-500">*</span>
               </Label>
               <Input
-                maxLength={7}
+                // Long enough for an address; a FIN is still capped by the
+                // pattern check rather than by the field length.
+                maxLength={254}
                 value={finKod}
-                placeholder="Fin Kod"
-                onChange={(e) => setFinKodInterally((e.target.value).toUpperCase())} />
-              {/* If editable is required, you can update it from another step */}
+                placeholder="FIN kod və ya e-poçt ünvanı"
+                error={!!identifierError(finKod)}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  // An expert's identifier is an address — leave its case alone.
+                  setFinKodInterally(looksLikeEmail(raw) ? raw.trim() : raw.toUpperCase());
+                }} />
+              {identifierError(finKod) ? (
+                <p className="mt-1 text-xs font-medium text-error-500">{identifierError(finKod)}</p>
+              ) : (
+                <p className="mt-1 text-xs text-gray-400">
+                  Ekspertlər e-poçt ünvanı ilə daxil olurlar.
+                </p>
+              )}
             </div>
             <div>
               <Label>
@@ -129,6 +176,7 @@ export default function SignInForm() {
                 disabled={
                   loading ||
                   !finKod.trim() ||
+                  !!identifierError(finKod) ||
                   !password.trim() ||
                   userType === null
                 }

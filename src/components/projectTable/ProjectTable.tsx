@@ -20,6 +20,7 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import CircularProgress from '@mui/material/CircularProgress';
 import useCollaborationStatus from "../../hooks/useCollaborationStatus";
+import AssignExpertModal from "../setExpert/AssignExpertModal";
 
 /** `submitted_at` arrives as an RFC-1123 string; show just the day. */
 function formatSubmittedAt(value: string | null | undefined) {
@@ -35,6 +36,8 @@ export default function ProjectTable() {
     const [projects, setProjects] = useState<any[]>([]);
     const [winnerLoading, setWinnerLoading] = useState<number | null>(null);
     const [deletingCode, setDeletingCode] = useState<number | null>(null);
+    // The project whose expert is being chosen; null when the dialog is closed.
+    const [assigningProject, setAssigningProject] = useState<any | null>(null);
     const fin_kod = useSelector((state: RootState) => state.auth.fin_kod);
     const projectRole = useSelector((state: RootState) => state.auth.projectRole);
     // Leads take part in projects too, so both roles get the "join" column.
@@ -429,13 +432,16 @@ export default function ProjectTable() {
                                     ) : null}
                                     {projectRole === 2 ? (
                                         <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
-                                            {
-                                                <Link to={"/set-expert"} state={{project}}>
-                                                    <Button>
-                                                        Ekspert təyin et
-                                                    </Button>
-                                                </Link>
-                                            }
+                                            <div className="flex flex-col items-start gap-1">
+                                                <Button size="sm" onClick={() => setAssigningProject(project)}>
+                                                    {project.expert ? "Eksperti dəyiş" : "Ekspert təyin et"}
+                                                </Button>
+                                                {project.expert ? (
+                                                    <span className="max-w-[200px] truncate text-xs text-gray-400" title={project.expert}>
+                                                        {project.expert}
+                                                    </span>
+                                                ) : null}
+                                            </div>
                                         </TableCell>
                                     ) : null}
                                     {projectRole === 2 ? (
@@ -493,6 +499,20 @@ export default function ProjectTable() {
                     </Table>
                 </div>
             </div>
+
+            {assigningProject ? (
+                <AssignExpertModal
+                    isOpen={!!assigningProject}
+                    project={assigningProject}
+                    onClose={() => setAssigningProject(null)}
+                    onAssigned={(email) =>
+                        setProjects(prev => prev.map(p =>
+                            p.project_code === assigningProject.project_code
+                                ? { ...p, expert: email }
+                                : p))
+                    }
+                />
+            ) : null}
         </>
     )
 }

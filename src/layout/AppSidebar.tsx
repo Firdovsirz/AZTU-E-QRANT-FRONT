@@ -27,6 +27,7 @@ import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined';
 import HistoryIcon from '@mui/icons-material/History';
 import GroupsIcon from '@mui/icons-material/Groups';
+import GradingIcon from '@mui/icons-material/Grading';
 
 type NavItem = {
   name: string;
@@ -50,6 +51,21 @@ const navItems: NavItem[] = [
     icon: <UserCircleIcon />,
     name: "Şəxsi məlumatlar",
     path: "/user-details/:fin_kod",
+  },
+];
+
+// An expert has no project of their own and no profile to complete — they see
+// only what they were appointed to judge.
+const expertNavItems: NavItem[] = [
+  {
+    icon: <GradingIcon />,
+    name: "Qiymətləndirdiyim layihələr",
+    path: "/expert/projects",
+  },
+  {
+    icon: <VpnKeyIcon />,
+    name: "Şifrəni dəyiş",
+    path: "/change-password",
   },
 ];
 
@@ -87,7 +103,7 @@ const othersItems: NavItem[] = [
 const AppSidebar: React.FC = () => {
   const projectRole = useSelector((state: RootState) => state.auth.projectRole);
 
-  const navItemsWithProject = [
+  const navItemsWithProject = projectRole === 3 ? expertNavItems : [
     ...navItems,
     ...(projectRole === 0
       ? [

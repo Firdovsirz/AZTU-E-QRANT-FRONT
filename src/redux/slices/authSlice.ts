@@ -11,6 +11,8 @@ interface AuthState {
   profileCompleted: number | null;
   showLoginToast: boolean;
   isCollaborator: boolean | null;
+  /** An expert signs in with a one-time password and must replace it first. */
+  mustChangePassword: boolean;
 }
 
 const initialState: AuthState = {
@@ -23,7 +25,8 @@ const initialState: AuthState = {
   projectCode: null,
   profileCompleted: null,
   showLoginToast: false,
-  isCollaborator: null
+  isCollaborator: null,
+  mustChangePassword: false
 };
 
 const authSlice = createSlice({
@@ -48,6 +51,9 @@ const authSlice = createSlice({
     setGlobalIsCollaborator: (state, action: PayloadAction<boolean>) => {
       state.isCollaborator = action.payload;
     },
+    setMustChangePassword: (state, action: PayloadAction<boolean>) => {
+      state.mustChangePassword = action.payload;
+    },
     loginSuccess: (
       state,
       action: PayloadAction<{
@@ -61,6 +67,7 @@ const authSlice = createSlice({
         is_collaborator: boolean;
         projectCode: number;
         profileCompleted: number;
+        mustChangePassword?: boolean;
       }>
     ) => {
       state.token = action.payload.token;
@@ -73,6 +80,7 @@ const authSlice = createSlice({
       state.profileCompleted = action.payload.profileCompleted;
       state.showLoginToast = true;
       state.isCollaborator = action.payload.is_collaborator;
+      state.mustChangePassword = !!action.payload.mustChangePassword;
     },
     clearLoginToast: (state) => {
       state.showLoginToast = false;
@@ -97,6 +105,7 @@ export const {
   clearLoginToast,
   setGlobalProjectCode,
   setGlobalProfilCompleted,
-  setGlobalIsCollaborator
+  setGlobalIsCollaborator,
+  setMustChangePassword
 } = authSlice.actions;
 export default authSlice.reducer;

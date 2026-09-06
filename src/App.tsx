@@ -6,7 +6,6 @@ import UserProfiles from "./pages/UserProfiles";
 import NotFound from "./pages/OtherPage/NotFound";
 import Experts from "./components/experts/Experts";
 import { Provider, useSelector } from "react-redux";
-import SetExpert from "./components/setExpert/SetExpert";
 import NewExpert from "./components/newExpert/NewExpert";
 import UserViewPage from "./pages/UserView/UserViewPage";
 import { BrowserRouter as Router } from "react-router-dom";
@@ -53,6 +52,9 @@ import ProjectsArchivePage from "./pages/ProjectsArchivePage/ProjectsArchivePage
 import ArchiveProjectEditPage from "./pages/ArchiveProjectEditPage/ArchiveProjectEditPage";
 import MyHistoryPage from "./pages/MyHistoryPage/MyHistoryPage";
 import AdminProjectEditPage from "./pages/AdminProjectEditPage/AdminProjectEditPage";
+import ExpertProjectsPage from "./pages/ExpertProjectsPage/ExpertProjectsPage";
+import ExpertVerifyPage from "./pages/ExpertVerifyPage/ExpertVerifyPage";
+import ChangePasswordPage from "./pages/ChangePasswordPage/ChangePasswordPage";
 
 export default function App() {
   return (
@@ -79,6 +81,9 @@ function isTokenExpired(token: string): boolean {
 function AppWithRouterWrapper() {
   const token = useSelector((state: RootState) => state.auth.token);
   const userType = useSelector((state: RootState) => state.auth.userType);
+  // An expert signs in with a one-time password; until it is replaced the only
+  // page they may reach is the one that replaces it.
+  const mustChangePassword = useSelector((state: RootState) => state.auth.mustChangePassword);
   const [lock, setLock] = useState<boolean>(false);
 
   useEffect(() => {
@@ -105,7 +110,12 @@ function AppWithRouterWrapper() {
             <Navigate to={token && !isTokenExpired(token) ? "/home" : "/signin"} replace />
           }
         />
-        {token && !isTokenExpired(token) ? (
+        {token && !isTokenExpired(token) && mustChangePassword ? (
+          <Route element={<AppLayout />}>
+            <Route path="/change-password" element={<ChangePasswordPage />} />
+            <Route path="*" element={<Navigate to="/change-password" replace />} />
+          </Route>
+        ) : token && !isTokenExpired(token) ? (
           <Route element={<AppLayout />}>
             <Route index path="/home" element={<Home />} />
             <Route path="/profile" element={<UserProfiles />} />
@@ -126,7 +136,6 @@ function AppWithRouterWrapper() {
             <Route path="/my-project" element={<MyProjectPage />} />
             <Route path="/approve-waiting-users" element={<ApproveWaitingCollaboratorsPage />} />
             <Route path="/approve-waiting-auth-users" element={<ApproveWaitingUsersPage />} />
-            <Route path="/set-expert" element={<SetExpert />} />
             <Route path="/new-expert" element={<NewExpert />} />
             <Route path="/experts" element={<Experts />} />
             <Route path="/prioritets" element={<PrioritetsPage />} />
@@ -146,6 +155,9 @@ function AppWithRouterWrapper() {
             {/* Admin-only surface; the backend refuses the writes for anyone else. */}
             <Route path="/admin/project/:projectCode/edit" element={<AdminProjectEditPage />} />
             <Route path="/my-history" element={<MyHistoryPage />} />
+            <Route path="/change-password" element={<ChangePasswordPage />} />
+            {/* Expert workspace. The backend refuses these calls for anyone else. */}
+            <Route path="/expert/projects" element={<ExpertProjectsPage />} />
           </Route>
         ) : (
           <Route path="*" element={<Navigate to="/signin" />} />
@@ -176,6 +188,8 @@ function AppWithRouterWrapper() {
           }
         />
         <Route path="/expert-signin" element={<ExpertSigninPage />} />
+        {/* Public: clicking this link IS the proof the address works. */}
+        <Route path="/expert-verify/:token" element={<ExpertVerifyPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/otp-verification/:finKod" element={<OtpVerificationPage />} />
         <Route path="/reset-password/:token" element={<NewPasswordPage />} />
