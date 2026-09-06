@@ -183,11 +183,31 @@ export default function ProjectDetails(
                 try {
                     const response = await apiClient.post('/api/submit-project', { project_code: projectCode });
                     if (response.status === 200) {
-                        Swal.fire('Uğur!', 'Layihə uğurla təqdim olundu.', 'success');
+                        // Blank sections do not block the submission, but say
+                        // which went in empty so it is a choice, not a surprise.
+                        const blank = response.data?.incomplete_labels ?? [];
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Uğur!',
+                            text: blank.length
+                                ? `Layihə təqdim olundu. Boş qalan sahələr: ${blank.join(', ')}`
+                                : 'Layihə uğurla təqdim olundu.',
+                            confirmButtonText: 'OK'
+                        });
                     }
-                } catch (error) {
+                } catch (error: any) {
                     console.error('Error submitting project:', error);
-                    Swal.fire('Xəta!', 'Layihəni təqdim edərkən xəta baş verdi.', 'error');
+                    // The only thing that refuses a submission is the smeta cap,
+                    // so show the actual numbers rather than a generic failure.
+                    const data = error.response?.data;
+                    Swal.fire({
+                        icon: 'error',
+                        title: data?.error ?? 'Xəta!',
+                        text: data?.total_amount != null
+                            ? `Cari smeta: ${data.total_amount} AZN, icazə verilən: ${data.max_amount} AZN.`
+                            : (data?.error ? undefined : 'Layihəni təqdim edərkən xəta baş verdi.'),
+                        confirmButtonText: 'Bağla'
+                    });
                 }
             }
         });

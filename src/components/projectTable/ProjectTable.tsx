@@ -21,6 +21,15 @@ import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import CircularProgress from '@mui/material/CircularProgress';
 import useCollaborationStatus from "../../hooks/useCollaborationStatus";
 
+/** `submitted_at` arrives as an RFC-1123 string; show just the day. */
+function formatSubmittedAt(value: string | null | undefined) {
+    if (!value) return "";
+    const date = new Date(value);
+    return isNaN(date.getTime())
+        ? ""
+        : date.toLocaleDateString("az-AZ", { year: "numeric", month: "short", day: "numeric" });
+}
+
 export default function ProjectTable() {
     const [loading, setLoading] = useState(true);
     const [projects, setProjects] = useState<any[]>([]);
@@ -205,7 +214,7 @@ export default function ProjectTable() {
         );
     };
 
-    const emptyColSpan = projectRole === 2 ? 9 : canJoinProjects ? 5 : 4;
+    const emptyColSpan = projectRole === 2 ? 10 : canJoinProjects ? 5 : 4;
 
     /** Why this project's "join" button is unavailable, or null when it is. */
     const joinBlockedReason = (project: any): string | null => {
@@ -268,6 +277,17 @@ export default function ProjectTable() {
                                 >
                                     Layihə statusu
                                 </TableCell>
+                                {/* Whether the lead has actually handed the proposal in.
+                                    Distinct from "təsdiq olunub", which only means the
+                                    form is fully filled. Admins only. */}
+                                {projectRole === 2 ? (
+                                    <TableCell
+                                        isHeader
+                                        className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400"
+                                    >
+                                        Təqdim edilib
+                                    </TableCell>
+                                ) : null}
                                 {/* The admin body row renders a "view" link here, so the
                                     header has to exist too or every later column is
                                     labelled by its neighbour. */}
@@ -354,6 +374,28 @@ export default function ProjectTable() {
                                             </span>
                                         )}
                                     </TableCell>
+                                    {projectRole === 2 ? (
+                                        <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
+                                            {project.submitted ? (
+                                                <span className="inline-flex flex-col gap-0.5">
+                                                    <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-success-50 px-2.5 py-1 text-xs font-semibold text-success-700 ring-1 ring-inset ring-success-200/60 dark:bg-success-500/15 dark:text-success-400 dark:ring-success-400/20">
+                                                        <span className="h-1.5 w-1.5 rounded-full bg-success-500" />
+                                                        Təqdim edilib
+                                                    </span>
+                                                    {project.submitted_at ? (
+                                                        <span className="text-[11px] text-gray-400">
+                                                            {formatSubmittedAt(project.submitted_at)}
+                                                        </span>
+                                                    ) : null}
+                                                </span>
+                                            ) : (
+                                                <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-500 ring-1 ring-inset ring-gray-200/60 dark:bg-white/[0.06] dark:text-gray-400 dark:ring-white/10">
+                                                    <span className="h-1.5 w-1.5 rounded-full bg-gray-400" />
+                                                    Təqdim edilməyib
+                                                </span>
+                                            )}
+                                        </TableCell>
+                                    ) : null}
                                     {projectRole === 2 ? (
                                         <TableCell className="px-4 py-3 text-gray-500 text-start text-theme-sm dark:text-gray-400">
                                             <Link to={`/project-view/${project.project_code}`}>
